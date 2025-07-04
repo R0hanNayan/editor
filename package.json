@@ -3,25 +3,38 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
+    "canvas": "^3.1.2",
+    "clsx": "^2.1.1",
+    "konva": "^9.3.20",
+    "lucide-react": "^0.525.0",
+    "next": "15.3.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "next": "15.3.4"
+    "react-konva": "^19.0.7",
+    "redux-undo": "^1.1.0",
+    "svg-path-commander": "^2.1.11",
+    "svg-path-parser": "^1.1.0",
+    "svgson": "^5.3.1",
+    "tailwind-merge": "^3.3.1",
+    "use-image": "^1.1.4"
   },
   "devDependencies": {
-    "typescript": "^5",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19",
+    "@types/svg-path-parser": "^1.1.6",
     "eslint": "^9",
     "eslint-config-next": "15.3.4",
-    "@eslint/eslintrc": "^3"
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "worker-loader": "^3.0.8"
   }
 }
