@@ -100,9 +100,16 @@ export const useEditorState = () => {
     setState(prev => {
       const newElements = prev.elements.map(el => {
         if (el.id === elementId) {
-          // If element is already selected, toggle between transform and edit mode
+          // If element is already selected, cycle through modes: transform -> edit -> skew -> transform
           if (el.isSelected && prev.selectedElementIds.length <= 1) {
-            const newMode: 'transform' | 'edit' = el.selectionMode === 'transform' ? 'edit' : 'transform';
+            let newMode: 'transform' | 'edit' | 'skew';
+            if (el.selectionMode === 'transform') {
+              newMode = 'edit';
+            } else if (el.selectionMode === 'edit') {
+              newMode = 'skew';
+            } else {
+              newMode = 'transform';
+            }
             return { ...el, selectionMode: newMode };
           } else {
             // First selection - start with transform mode
@@ -1121,6 +1128,32 @@ export const useEditorState = () => {
     updateMultipleElements(updates);
   }, [state.elements, getContentBounds, getElementBounds, updateMultipleElements]);
 
+  const cycleSelectionMode = useCallback(() => {
+    setState(prev => {
+      if (prev.selectedElementIds.length === 0) return prev;
+
+      // Get the current mode from the first selected element
+      const firstSelectedElement = prev.elements.find(el => el.isSelected);
+      if (!firstSelectedElement) return prev;
+
+      let newMode: 'transform' | 'edit' | 'skew';
+      if (firstSelectedElement.selectionMode === 'transform') {
+        newMode = 'edit';
+      } else if (firstSelectedElement.selectionMode === 'edit') {
+        newMode = 'skew';
+      } else {
+        newMode = 'transform';
+      }
+
+      return {
+        ...prev,
+        elements: prev.elements.map(el => 
+          el.isSelected ? { ...el, selectionMode: newMode } : el
+        ),
+      };
+    });
+  }, [setState]);
+
   return {
     state,
     actions: {
@@ -1155,6 +1188,8 @@ export const useEditorState = () => {
       alignBottom,
       alignCenterHorizontally,
       alignCenterVertically,
+      // Cycle selection mode
+      cycleSelectionMode,
     },
     undoRedo: {
       canUndo,

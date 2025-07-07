@@ -797,9 +797,15 @@ export const SVGEditor: React.FC = () => {
                             <span className={`text-xs mt-1 ${
                               element.selectionMode === 'transform' 
                                 ? 'text-blue-600' 
+                                : element.selectionMode === 'skew'
+                                ? 'text-yellow-600'
                                 : 'text-green-600'
                             }`}>
-                              {element.selectionMode === 'transform' ? 'Transform Mode' : 'Edit Mode'}
+                              {element.selectionMode === 'transform' 
+                                ? 'Transform Mode' 
+                                : element.selectionMode === 'skew'
+                                ? 'Skew Mode'
+                                : 'Edit Mode'}
                             </span>
                           )}
                         </div>

@@ -4,6 +4,7 @@ import { Rect, Circle, Ellipse, Group, Transformer } from 'react-konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 import { SVGElement } from '@/types/svg';
 import Konva from 'konva';
+import { SkewHandles } from '../common/SkewHandles';
 
 interface ShapeElementProps {
   element: SVGElement;
@@ -33,6 +34,24 @@ export const ShapeElement: React.FC<ShapeElementProps> = React.memo(({
     }
   }, [isSelected, isMultiSelected, element.selectionMode, element.width, element.height, element.radius, element.radiusX, element.radiusY]);
 
+  // Calculate center offset for skew transform
+  const getCenterOffset = () => {
+    if (element.type === 'rect') {
+      return {
+        x: (element.width || 100) / 2,
+        y: (element.height || 100) / 2
+      };
+    } else if (element.type === 'circle') {
+      const radius = element.radius || 50;
+      return { x: radius, y: radius };
+    } else if (element.type === 'ellipse') {
+      const rx = element.radiusX || 50;
+      const ry = element.radiusY || 30;
+      return { x: rx, y: ry };
+    }
+    return { x: 0, y: 0 };
+  };
+
   const handleClick = (e: KonvaEventObject<MouseEvent>) => {
     e.cancelBubble = true;
     onSelect();
@@ -40,9 +59,14 @@ export const ShapeElement: React.FC<ShapeElementProps> = React.memo(({
 
   const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
     const pos = e.target.position();
+    // Get center offset to adjust position
+    const centerOffset = getCenterOffset();
     // Use requestAnimationFrame to batch the update
     requestAnimationFrame(() => {
-      onUpdate({ x: pos.x, y: pos.y });
+      onUpdate({ 
+        x: pos.x - centerOffset.x, 
+        y: pos.y - centerOffset.y 
+      });
     });
   };
 
@@ -153,14 +177,20 @@ export const ShapeElement: React.FC<ShapeElementProps> = React.memo(({
     return null;
   };
 
+  const centerOffset = getCenterOffset();
+
   return (
     <React.Fragment>
       <Group
         ref={shapeRef}
         id={`shape-${element.id}`}
-        x={element.x}
-        y={element.y}
+        x={element.x + centerOffset.x}
+        y={element.y + centerOffset.y}
+        offsetX={centerOffset.x}
+        offsetY={centerOffset.y}
         rotation={element.rotation || 0}
+        skewX={element.skewX || 0}
+        skewY={element.skewY || 0}
         draggable={!isMultiSelected} // Disable individual dragging when multi-selected
         onDragEnd={handleDragEnd}
         onTransformEnd={handleTransformEnd}
@@ -190,6 +220,40 @@ export const ShapeElement: React.FC<ShapeElementProps> = React.memo(({
           borderStroke="#3b82f6"
           borderStrokeWidth={2}
           borderDash={[4, 4]}
+        />
+      )}
+      {isSelected && element.selectionMode === 'skew' && !isMultiSelected && (
+        <SkewHandles
+          element={element}
+          onUpdate={onUpdate}
+          getBounds={() => {
+            if (element.type === 'rect') {
+              return {
+                width: element.width || 100,
+                height: element.height || 100,
+                centerX: element.x + (element.width || 100) / 2,
+                centerY: element.y + (element.height || 100) / 2
+              };
+            } else if (element.type === 'circle') {
+              const radius = element.radius || 50;
+              return {
+                width: radius * 2,
+                height: radius * 2,
+                centerX: element.x + radius,
+                centerY: element.y + radius
+              };
+            } else if (element.type === 'ellipse') {
+              const rx = element.radiusX || 50;
+              const ry = element.radiusY || 30;
+              return {
+                width: rx * 2,
+                height: ry * 2,
+                centerX: element.x + rx,
+                centerY: element.y + ry
+              };
+            }
+            return { width: 100, height: 100, centerX: element.x + 50, centerY: element.y + 50 };
+          }}
         />
       )}
     </React.Fragment>

@@ -37,6 +37,12 @@ export const MultiSelectionGroup: React.FC<MultiSelectionGroupProps> = React.mem
     [selectedElements]
   );
 
+  // Get the selection mode from the first selected element
+  const selectionMode = useMemo(() => 
+    selectedElements.length > 0 ? selectedElements[0].selectionMode : 'transform',
+    [selectedElements]
+  );
+
   const isMultiSelect = selectedElements.length > 1;
 
   useEffect(() => {
@@ -279,8 +285,13 @@ export const MultiSelectionGroup: React.FC<MultiSelectionGroupProps> = React.mem
         <Transformer
           ref={trRef}
           flipEnabled={false}
-          rotateEnabled={true}
+          rotateEnabled={selectionMode !== 'skew'}
+          resizeEnabled={selectionMode !== 'skew'}
+          enabledAnchors={selectionMode === 'skew' ? [] : undefined}
           boundBoxFunc={(oldBox, newBox) => {
+            if (selectionMode === 'skew') {
+              return oldBox; // Prevent resizing in skew mode
+            }
             // Limit resize
             if (Math.abs(newBox.width) < 10 || Math.abs(newBox.height) < 10) {
               return oldBox;
@@ -288,14 +299,14 @@ export const MultiSelectionGroup: React.FC<MultiSelectionGroupProps> = React.mem
             return newBox;
           }}
           anchorSize={8}
-          anchorStroke="#3b82f6"
+          anchorStroke={selectionMode === 'skew' ? "#eab308" : "#3b82f6"}
           anchorStrokeWidth={2}
           anchorFill="#ffffff"
           anchorCornerRadius={2}
-          borderStroke="#3b82f6"
+          borderStroke={selectionMode === 'skew' ? "#eab308" : "#3b82f6"}
           borderStrokeWidth={2}
           borderDash={[4, 4]}
-          onTransformEnd={handleMultiTransformEnd}
+          onTransformEnd={selectionMode !== 'skew' ? handleMultiTransformEnd : undefined}
         />
       )}
     </>

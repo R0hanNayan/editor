@@ -1,10 +1,12 @@
 'use client';
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Group, Path, Circle, Line, Transformer } from 'react-konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 import { SVGElement, PathPoint, Point } from '@/types/svg';
 import { pathPointsToString } from '@/utils/svg';
 import Konva from 'konva';
+import { SkewHandles } from '../common/SkewHandles';
 
 interface PathElementProps {
   element: SVGElement;
@@ -93,9 +95,13 @@ export const PathElement: React.FC<PathElementProps> = React.memo(({
 
   const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
     const pos = e.target.position();
+    const pathCenterOffset = getPathCenterOffset();
     // Use requestAnimationFrame to batch the update
     requestAnimationFrame(() => {
-      onUpdate({ x: pos.x, y: pos.y });
+      onUpdate({ 
+        x: pos.x - pathCenterOffset.x, 
+        y: pos.y - pathCenterOffset.y 
+      });
     });
   };
 
@@ -154,13 +160,55 @@ export const PathElement: React.FC<PathElementProps> = React.memo(({
     }
   };
 
+  // Calculate path bounding box for center offset
+  const getPathCenterOffset = () => {
+    if (!element.path || !element.path.points.length) {
+      return { x: 0, y: 0 };
+    }
+    
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+    
+    element.path.points.forEach(point => {
+      minX = Math.min(minX, point.x);
+      maxX = Math.max(maxX, point.x);
+      minY = Math.min(minY, point.y);
+      maxY = Math.max(maxY, point.y);
+      
+      // Include control points in bounding box
+      if (point.controlPoint1) {
+        minX = Math.min(minX, point.controlPoint1.x);
+        maxX = Math.max(maxX, point.controlPoint1.x);
+        minY = Math.min(minY, point.controlPoint1.y);
+        maxY = Math.max(maxY, point.controlPoint1.y);
+      }
+      if (point.controlPoint2) {
+        minX = Math.min(minX, point.controlPoint2.x);
+        maxX = Math.max(maxX, point.controlPoint2.x);
+        minY = Math.min(minY, point.controlPoint2.y);
+        maxY = Math.max(maxY, point.controlPoint2.y);
+      }
+    });
+    
+    return {
+      x: (maxX + minX) / 2,
+      y: (maxY + minY) / 2
+    };
+  };
+
+  const pathCenterOffset = getPathCenterOffset();
+
   const renderPathContent = () => (
     <Group
       ref={pathRef}
       id={`shape-${element.id}`}
-      x={element.x}
-      y={element.y}
+      x={element.x + pathCenterOffset.x}
+      y={element.y + pathCenterOffset.y}
+      offsetX={pathCenterOffset.x}
+      offsetY={pathCenterOffset.y}
       rotation={element.rotation || 0}
+      skewX={element.skewX || 0}
+      skewY={element.skewY || 0}
       draggable={!isMultiSelected} // Disable individual dragging when multi-selected
       onDragEnd={handleDragEnd}
       onTransformEnd={handleTransformEnd}
@@ -339,6 +387,38 @@ export const PathElement: React.FC<PathElementProps> = React.memo(({
           borderStroke="#3b82f6"
           borderStrokeWidth={2}
           borderDash={[4, 4]}
+        />
+      )}
+      {isSelected && element.selectionMode === 'skew' && !isMultiSelected && (
+        <SkewHandles
+          element={element}
+          onUpdate={onUpdate}
+          getBounds={() => {
+            const pathCenterOffset = getPathCenterOffset();
+            // Estimate path bounds (simplified)
+            let width = 100, height = 100;
+            if (element.path && element.path.points.length > 0) {
+              let minX = Infinity, maxX = -Infinity;
+              let minY = Infinity, maxY = -Infinity;
+              
+              element.path.points.forEach(point => {
+                minX = Math.min(minX, point.x);
+                maxX = Math.max(maxX, point.x);
+                minY = Math.min(minY, point.y);
+                maxY = Math.max(maxY, point.y);
+              });
+              
+              width = Math.max(50, maxX - minX);
+              height = Math.max(50, maxY - minY);
+            }
+            
+            return {
+              width,
+              height,
+              centerX: element.x + pathCenterOffset.x,
+              centerY: element.y + pathCenterOffset.y
+            };
+          }}
         />
       )}
     </React.Fragment>

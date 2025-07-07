@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   MousePointer, 
   Move, 
@@ -24,7 +24,9 @@ import {
   AlignCenterHorizontal,
   AlignCenterVertical,
   AlignStartVertical,
-  AlignEndVertical
+  AlignEndVertical,
+  ChevronDown,
+  MoreHorizontal
 } from 'lucide-react';
 import { EditorState } from '@/types/svg';
 
@@ -73,6 +75,26 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onAlignCenterVertically,
   hasSelection,
 }) => {
+  const [showAlignMenu, setShowAlignMenu] = useState(false);
+  const [showTransformMenu, setShowTransformMenu] = useState(false);
+  const alignMenuRef = useRef<HTMLDivElement>(null);
+  const transformMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (alignMenuRef.current && !alignMenuRef.current.contains(event.target as Node)) {
+        setShowAlignMenu(false);
+      }
+      if (transformMenuRef.current && !transformMenuRef.current.contains(event.target as Node)) {
+        setShowTransformMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const tools = [
     { id: 'select' as const, icon: MousePointer, label: 'Select' },
     { id: 'pencil' as const, icon: Pencil, label: 'Pencil' },
@@ -149,72 +171,146 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               Select All
             </button>
             
-            {/* Flip Actions - only show when elements are selected */}
+            {/* Transform & Alignment Actions - only show when elements are selected */}
             {hasSelection && (
-              <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1 border border-gray-200">
-                <button
-                  onClick={onFlipHorizontal}
-                  className="p-1.5 text-gray-600 hover:bg-gray-200 rounded transition-colors"
-                  title="Flip Horizontally (Ctrl+H)"
-                >
-                  <FlipHorizontal size={16} />
-                </button>
-                <button
-                  onClick={onFlipVertical}
-                  className="p-1.5 text-gray-600 hover:bg-gray-200 rounded transition-colors"
-                  title="Flip Vertically (Ctrl+V)"
-                >
-                  <FlipVertical size={16} />
-                </button>
-              </div>
-            )}
+              <div className="flex items-center gap-1">
+                {/* Transform Dropdown */}
+                <div className="relative" ref={transformMenuRef}>
+                  <button
+                    onClick={() => setShowTransformMenu(!showTransformMenu)}
+                    className="flex items-center gap-1 px-2 py-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors border border-gray-200"
+                    title="Transform Options"
+                  >
+                    <MoreHorizontal size={16} />
+                    <ChevronDown size={12} />
+                  </button>
+                  
+                  {showTransformMenu && (
+                    <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[160px]">
+                      <div className="p-1">
+                        <div className="px-3 py-2 text-xs font-medium text-gray-500 border-b border-gray-100">
+                          Transform
+                        </div>
+                        <button
+                          onClick={() => {
+                            onFlipHorizontal();
+                            setShowTransformMenu(false);
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded"
+                        >
+                          <FlipHorizontal size={16} />
+                          Flip Horizontally
+                          <span className="ml-auto text-xs text-gray-400">Ctrl+H</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            onFlipVertical();
+                            setShowTransformMenu(false);
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded"
+                        >
+                          <FlipVertical size={16} />
+                          Flip Vertically
+                          <span className="ml-auto text-xs text-gray-400">Ctrl+Shift+V</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
-            {/* Alignment Actions - only show when elements are selected */}
-            {hasSelection && (
-              <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1 border border-gray-200">
-                <button
-                  onClick={onAlignLeft}
-                  className="p-1.5 text-gray-600 hover:bg-gray-200 rounded transition-colors"
-                  title="Align Left (Ctrl+←)"
-                >
-                  <AlignLeft size={16} />
-                </button>
-                <button
-                  onClick={onAlignCenterHorizontally}
-                  className="p-1.5 text-gray-600 hover:bg-gray-200 rounded transition-colors"
-                  title="Center Horizontally (Ctrl+-)"
-                >
-                  <AlignCenterHorizontal size={16} />
-                </button>
-                <button
-                  onClick={onAlignRight}
-                  className="p-1.5 text-gray-600 hover:bg-gray-200 rounded transition-colors"
-                  title="Align Right (Ctrl+→)"
-                >
-                  <AlignRight size={16} />
-                </button>
-                <div className="w-px h-4 bg-gray-300 mx-1"></div>
-                <button
-                  onClick={onAlignTop}
-                  className="p-1.5 text-gray-600 hover:bg-gray-200 rounded transition-colors"
-                  title="Align Top (Ctrl+↑)"
-                >
-                  <AlignStartVertical size={16} />
-                </button>
-                <button
-                  onClick={onAlignCenterVertically}
-                  className="p-1.5 text-gray-600 hover:bg-gray-200 rounded transition-colors"
-                  title="Center Vertically (Ctrl+|)"
-                >
-                  <AlignCenterVertical size={16} />
-                </button>
-                <button
-                  onClick={onAlignBottom}
-                  className="p-1.5 text-gray-600 hover:bg-gray-200 rounded transition-colors"
-                  title="Align Bottom (Ctrl+↓)"
-                >
-                  <AlignEndVertical size={16} />
-                </button>
+                {/* Align Dropdown */}
+                <div className="relative" ref={alignMenuRef}>
+                  <button
+                    onClick={() => setShowAlignMenu(!showAlignMenu)}
+                    className="flex items-center gap-1 px-2 py-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors border border-gray-200"
+                    title="Alignment Options"
+                  >
+                    <AlignCenterHorizontal size={16} />
+                    <ChevronDown size={12} />
+                  </button>
+                  
+                  {showAlignMenu && (
+                    <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[180px]">
+                      <div className="p-1">
+                        <div className="px-3 py-2 text-xs font-medium text-gray-500 border-b border-gray-100">
+                          Horizontal Alignment
+                        </div>
+                        <button
+                          onClick={() => {
+                            onAlignLeft();
+                            setShowAlignMenu(false);
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded"
+                        >
+                          <AlignLeft size={16} />
+                          Align Left
+                          <span className="ml-auto text-xs text-gray-400">Ctrl+←</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            onAlignCenterHorizontally();
+                            setShowAlignMenu(false);
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded"
+                        >
+                          <AlignCenterHorizontal size={16} />
+                          Center Horizontally
+                          <span className="ml-auto text-xs text-gray-400">Ctrl+-</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            onAlignRight();
+                            setShowAlignMenu(false);
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded"
+                        >
+                          <AlignRight size={16} />
+                          Align Right
+                          <span className="ml-auto text-xs text-gray-400">Ctrl+→</span>
+                        </button>
+                        
+                        <div className="border-t border-gray-100 mt-1 pt-1">
+                          <div className="px-3 py-2 text-xs font-medium text-gray-500">
+                            Vertical Alignment
+                          </div>
+                          <button
+                            onClick={() => {
+                              onAlignTop();
+                              setShowAlignMenu(false);
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded"
+                          >
+                            <AlignStartVertical size={16} />
+                            Align Top
+                            <span className="ml-auto text-xs text-gray-400">Ctrl+↑</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              onAlignCenterVertically();
+                              setShowAlignMenu(false);
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded"
+                          >
+                            <AlignCenterVertical size={16} />
+                            Center Vertically
+                            <span className="ml-auto text-xs text-gray-400">Ctrl+|</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              onAlignBottom();
+                              setShowAlignMenu(false);
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded"
+                          >
+                            <AlignEndVertical size={16} />
+                            Align Bottom
+                            <span className="ml-auto text-xs text-gray-400">Ctrl+↓</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

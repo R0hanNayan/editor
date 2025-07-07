@@ -4,6 +4,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Text, Group, Transformer } from 'react-konva';
 import { SVGElement } from '@/types/svg';
 import Konva from 'konva';
+import { SkewHandles } from '../common/SkewHandles';
 
 interface TextElementProps {
   element: SVGElement;
@@ -64,9 +65,16 @@ export const TextElement: React.FC<TextElementProps> = React.memo(({
     const node = e.target as Konva.Text;
     const pos = node.position();
     
+    // Account for text center offset
+    const textCenterOffsetX = (element.width || 200) / 2;
+    const textCenterOffsetY = (element.fontSize || 16) / 2;
+    
     // Use requestAnimationFrame to batch the update
     requestAnimationFrame(() => {
-      onUpdate(element.id, { x: pos.x, y: pos.y });
+      onUpdate(element.id, { 
+        x: pos.x - textCenterOffsetX, 
+        y: pos.y - textCenterOffsetY 
+      });
     });
   };
 
@@ -288,8 +296,10 @@ export const TextElement: React.FC<TextElementProps> = React.memo(({
       <Text
         ref={textRef}
         id={`shape-${element.id}`}
-        x={element.x}
-        y={element.y}
+        x={element.x + (element.width || 200) / 2}
+        y={element.y + (element.fontSize || 16) / 2}
+        offsetX={(element.width || 200) / 2}
+        offsetY={(element.fontSize || 16) / 2}
         text={element.text || 'Double-click to edit'}
         fontSize={element.fontSize || 16}
         fontFamily={element.fontFamily || 'Arial, sans-serif'}
@@ -307,6 +317,8 @@ export const TextElement: React.FC<TextElementProps> = React.memo(({
         letterSpacing={element.letterSpacing || 0}
         textDecoration={element.textDecoration || ''}
         rotation={element.rotation || 0}
+        skewX={element.skewX || 0}
+        skewY={element.skewY || 0}
         onClick={handleClick}
         onTap={handleClick}
         onDblClick={handleDblClick}
@@ -337,6 +349,20 @@ export const TextElement: React.FC<TextElementProps> = React.memo(({
             return newBox;
           }}
           onTransformEnd={handleTransformEnd}
+        />
+      )}
+      
+      {/* Skew Mode Handles */}
+      {isSelected && !isMultiSelected && element.selectionMode === 'skew' && (
+        <SkewHandles
+          element={element}
+          onUpdate={(updates) => onUpdate(element.id, updates)}
+          getBounds={() => ({
+            width: element.width || 200,
+            height: (element.fontSize || 16) * (element.lineHeight || 1.2),
+            centerX: element.x + (element.width || 200) / 2,
+            centerY: element.y + ((element.fontSize || 16) * (element.lineHeight || 1.2)) / 2
+          })}
         />
       )}
     </Group>

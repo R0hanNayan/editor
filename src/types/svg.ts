@@ -30,6 +30,8 @@ export interface SVGElement {
   radiusX?: number;
   radiusY?: number;
   rotation?: number;
+  skewX?: number; // Skew transform in degrees
+  skewY?: number; // Skew transform in degrees
   path?: SVGPath;
   // For free drawing lines
   points?: number[]; // Flat array of x,y coordinates for drawing tool
@@ -53,7 +55,7 @@ export interface SVGElement {
   fill: string;
   fillOpacity?: number;
   isSelected: boolean;
-  selectionMode?: 'transform' | 'edit';
+  selectionMode?: 'transform' | 'edit' | 'skew';
 }
 
 export interface EditorState {
