@@ -16,7 +16,8 @@ import {
   Undo,
   Redo,
   FlipHorizontal,
-  FlipVertical
+  FlipVertical,
+  Type
 } from 'lucide-react';
 import { EditorState } from '@/types/svg';
 
@@ -60,6 +61,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     { id: 'path' as const, icon: Move, label: 'Path' },
     { id: 'rect' as const, icon: Square, label: 'Rectangle' },
     { id: 'circle' as const, icon: Circle, label: 'Circle' },
+    { id: 'text' as const, icon: Type, label: 'Text' },
   ];
 
   return (

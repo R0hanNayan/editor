@@ -21,7 +21,7 @@ export interface SVGPath {
 
 export interface SVGElement {
   id: string;
-  type: 'path' | 'rect' | 'circle' | 'ellipse' | 'drawing' | 'line';
+  type: 'path' | 'rect' | 'circle' | 'ellipse' | 'drawing' | 'line' | 'text';
   x: number;
   y: number;
   width?: number;
@@ -36,6 +36,17 @@ export interface SVGElement {
   // For straight lines
   x2?: number; // End point x for straight lines
   y2?: number; // End point y for straight lines
+  // For text elements
+  text?: string;
+  fontSize?: number;
+  fontFamily?: string;
+  fontStyle?: string;
+  fontWeight?: string;
+  textAlign?: 'left' | 'center' | 'right';
+  verticalAlign?: 'top' | 'middle' | 'bottom';
+  lineHeight?: number;
+  letterSpacing?: number;
+  textDecoration?: string;
   stroke: string;
   strokeWidth: number;
   strokeOpacity?: number;
@@ -49,7 +60,7 @@ export interface EditorState {
   elements: SVGElement[];
   selectedElementId: string | null;
   selectedElementIds: string[]; // Add multi-selection support
-  tool: 'select' | 'path' | 'rect' | 'circle' | 'pencil' | 'line';
+  tool: 'select' | 'path' | 'rect' | 'circle' | 'pencil' | 'line' | 'text';
   zoom: number;
   pan: Point;
 }

@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { SVGElement } from '@/types/svg';
+import { useNumberInput } from '@/hooks/useNumberInput';
 
 interface PropertiesPanelProps {
   selectedElement: SVGElement | null;
@@ -12,6 +13,16 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   selectedElement,
   onUpdateElement,
 }) => {
+  // Local state for font size input to allow clearing
+  const [fontSizeInput, setFontSizeInput] = useState<string>('');
+
+  // Update local font size input when selected element changes
+  useEffect(() => {
+    if (selectedElement?.type === 'text') {
+      setFontSizeInput(String(selectedElement.fontSize || 16));
+    }
+  }, [selectedElement]);
+
   if (!selectedElement) {
     return (
       <div className="p-4">
@@ -191,6 +202,238 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             <span>180°</span>
           </div>
         </div>
+
+        {/* Text Properties */}
+        {selectedElement.type === 'text' && (
+          <div className="space-y-4">
+            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide">Text</label>
+            
+            {/* Text Content */}
+            <div className="space-y-2">
+              <label className="block text-xs text-gray-500">Content</label>
+              <textarea
+                value={selectedElement.text || ''}
+                onChange={(e) => handleChange('text', e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                rows={3}
+                placeholder="Enter text content..."
+              />
+            </div>
+
+            {/* Font Family */}
+            <div className="space-y-2">
+              <label className="block text-xs text-gray-500">Font Family</label>
+              <select
+                value={selectedElement.fontFamily || 'Arial, sans-serif'}
+                onChange={(e) => handleChange('fontFamily', e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="Arial, sans-serif">Arial</option>
+                <option value="Helvetica, sans-serif">Helvetica</option>
+                <option value="'Times New Roman', serif">Times New Roman</option>
+                <option value="Georgia, serif">Georgia</option>
+                <option value="'Courier New', monospace">Courier New</option>
+                <option value="Verdana, sans-serif">Verdana</option>
+                <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                <option value="Impact, sans-serif">Impact</option>
+              </select>
+            </div>
+
+            {/* Font Size and Weight */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Font Size</label>
+                <input
+                  type="number"
+                  value={fontSizeInput}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFontSizeInput(value);
+                    
+                    if (value === '') {
+                      // Allow empty input temporarily, don't update element yet
+                      return;
+                    }
+                    
+                    const numValue = parseInt(value);
+                    if (!isNaN(numValue)) {
+                      // Clamp value between 1 and 200
+                      const clampedValue = Math.max(1, Math.min(200, numValue));
+                      handleChange('fontSize', clampedValue);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    // Ensure valid value on blur
+                    const value = e.target.value;
+                    if (value === '' || isNaN(parseInt(value))) {
+                      const defaultSize = 16;
+                      setFontSizeInput(String(defaultSize));
+                      handleChange('fontSize', defaultSize);
+                    } else {
+                      const numValue = parseInt(value);
+                      const clampedValue = Math.max(1, Math.min(200, numValue));
+                      setFontSizeInput(String(clampedValue));
+                      handleChange('fontSize', clampedValue);
+                    }
+                  }}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="8-200"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Weight</label>
+                <select
+                  value={selectedElement.fontWeight || 'normal'}
+                  onChange={(e) => handleChange('fontWeight', e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="normal">Normal</option>
+                  <option value="bold">Bold</option>
+                  <option value="lighter">Light</option>
+                  <option value="100">100</option>
+                  <option value="200">200</option>
+                  <option value="300">300</option>
+                  <option value="400">400</option>
+                  <option value="500">500</option>
+                  <option value="600">600</option>
+                  <option value="700">700</option>
+                  <option value="800">800</option>
+                  <option value="900">900</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Text Alignment */}
+            <div className="space-y-2">
+              <label className="block text-xs text-gray-500">Text Alignment</label>
+              <div className="flex gap-2">
+                {(['left', 'center', 'right'] as const).map((align) => (
+                  <button
+                    key={align}
+                    onClick={() => handleChange('textAlign', align)}
+                    className={`flex-1 px-3 py-2 text-xs font-medium rounded-md transition-colors ${
+                      (selectedElement.textAlign || 'left') === align
+                        ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                        : 'bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    {align.charAt(0).toUpperCase() + align.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Font Style */}
+            <div className="space-y-2">
+              <label className="block text-xs text-gray-500">Style</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleChange('fontStyle', selectedElement.fontStyle === 'italic' ? 'normal' : 'italic')}
+                  className={`px-3 py-2 text-xs font-medium rounded-md transition-colors ${
+                    selectedElement.fontStyle === 'italic'
+                      ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                      : 'bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  <em>Italic</em>
+                </button>
+                <button
+                  onClick={() => handleChange('textDecoration', selectedElement.textDecoration === 'underline' ? '' : 'underline')}
+                  className={`px-3 py-2 text-xs font-medium rounded-md transition-colors ${
+                    selectedElement.textDecoration === 'underline'
+                      ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                      : 'bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  <u>Underline</u>
+                </button>
+              </div>
+            </div>
+
+            {/* Line Height and Letter Spacing */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Line Height</label>
+                <input
+                  type="number"
+                  value={selectedElement.lineHeight || 1.2}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') return;
+                    const numValue = parseFloat(value);
+                    if (!isNaN(numValue) && numValue >= 0.5 && numValue <= 3) {
+                      handleChange('lineHeight', numValue);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (isNaN(value) || value < 0.5) {
+                      handleChange('lineHeight', 0.5);
+                    } else if (value > 3) {
+                      handleChange('lineHeight', 3);
+                    }
+                  }}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  step="0.1"
+                  placeholder="0.5-3"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Letter Spacing</label>
+                <input
+                  type="number"
+                  value={selectedElement.letterSpacing || 0}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') return;
+                    const numValue = parseFloat(value);
+                    if (!isNaN(numValue) && numValue >= -5 && numValue <= 10) {
+                      handleChange('letterSpacing', numValue);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (isNaN(value) || value < -5) {
+                      handleChange('letterSpacing', -5);
+                    } else if (value > 10) {
+                      handleChange('letterSpacing', 10);
+                    }
+                  }}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  step="0.1"
+                  placeholder="-5 to 10"
+                />
+              </div>
+            </div>
+
+            {/* Text Width */}
+            <div className="space-y-2">
+              <label className="block text-xs text-gray-500">Text Width</label>
+              <input
+                type="number"
+                value={selectedElement.width || 200}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '') return;
+                  const numValue = parseFloat(value);
+                  if (!isNaN(numValue) && numValue >= 50 && numValue <= 1000) {
+                    handleChange('width', numValue);
+                  }
+                }}
+                onBlur={(e) => {
+                  const value = parseFloat(e.target.value);
+                  if (isNaN(value) || value < 50) {
+                    handleChange('width', 50);
+                  } else if (value > 1000) {
+                    handleChange('width', 1000);
+                  }
+                }}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="50-1000"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Colors */}
         <div className="space-y-4">

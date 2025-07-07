@@ -9,6 +9,7 @@ import { PathElement } from '../elements/PathElement';
 import { ShapeElement } from '../elements/ShapeElement';
 import { DrawingElement } from '../elements/DrawingElement';
 import { LineElement } from '../elements/LineElement';
+import { TextElement } from '../elements/TextElement';
 import { FileUpload } from '../common/FileUpload';
 import { PropertiesPanel } from '../panels/PropertiesPanel';
 import { MultiSelectionGroup } from './MultiSelectionGroup';
@@ -259,6 +260,29 @@ export const SVGEditor: React.FC = () => {
           actions.setTool('select');
         }
       }
+    } else if (state.tool === 'text') {
+      // Create a new text element
+      const id = actions.addElement({
+        type: 'text',
+        x: pos.x,
+        y: pos.y,
+        text: 'Double-click to edit',
+        fontSize: 16,
+        fontFamily: 'Arial, sans-serif',
+        fontStyle: 'normal',
+        fontWeight: 'normal',
+        textAlign: 'left',
+        verticalAlign: 'top',
+        lineHeight: 1.2,
+        letterSpacing: 0,
+        textDecoration: '',
+        width: 200,
+        stroke: 'transparent',
+        strokeWidth: 0,
+        fill: '#000000',
+      });
+      actions.selectElement(id);
+      actions.setTool('select');
     }
   };
 
@@ -431,6 +455,17 @@ export const SVGEditor: React.FC = () => {
             onUpdate={(elementId: string, updates: Partial<SVGElement>) => actions.updateElement(elementId, updates)}
           />
         );
+      } else if (element.type === 'text') {
+        return (
+          <TextElement
+            key={element.id}
+            element={element}
+            isSelected={element.isSelected}
+            isMultiSelected={isMultiSelected}
+            onSelect={() => handleElementSelect(element.id, false)}
+            onUpdate={(elementId: string, updates: Partial<SVGElement>) => actions.updateElement(elementId, updates)}
+          />
+        );
       } else {
         return (
           <ShapeElement
@@ -582,19 +617,6 @@ export const SVGEditor: React.FC = () => {
               )}
             </div>
           </div>
-          
-          {/* Properties Panel */}
-          <div className="border-t border-gray-100">
-            <PropertiesPanel
-              selectedElement={state.elements.find(el => el.isSelected) || null}
-              onUpdateElement={(updates) => {
-                const selectedId = state.selectedElementId;
-                if (selectedId) {
-                  actions.updateElement(selectedId, updates);
-                }
-              }}
-            />
-          </div>
         </div>
         
         {/* Canvas */}
@@ -665,6 +687,19 @@ export const SVGEditor: React.FC = () => {
             </Stage>
             </div>
           </div>
+        </div>
+        
+        {/* Right Sidebar - Properties Panel */}
+        <div className="w-80 bg-white border-l border-gray-200 flex flex-col">
+          <PropertiesPanel
+            selectedElement={state.elements.find(el => el.isSelected) || null}
+            onUpdateElement={(updates) => {
+              const selectedId = state.selectedElementId;
+              if (selectedId) {
+                actions.updateElement(selectedId, updates);
+              }
+            }}
+          />
         </div>
       </div>
     </div>

@@ -6,7 +6,8 @@ export {
   DrawingElement, 
   LineElement, 
   PathElement, 
-  ShapeElement 
+  ShapeElement,
+  TextElement
 } from './elements';
 
 // Panel components

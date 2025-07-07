@@ -680,6 +680,11 @@ export const useEditorState = () => {
             maxX = Math.max(maxX, element.x + point.controlPoint2.x);
           }
         });
+      } else if (element.type === 'text') {
+        // For text elements
+        const elementWidth = element.width || 200;
+        minX = Math.min(minX, element.x);
+        maxX = Math.max(maxX, element.x + elementWidth);
       } else {
         // For regular elements (rect, circle, ellipse)
         const elementWidth = element.width || (element.radius ? element.radius * 2 : 0) || (element.radiusX ? element.radiusX * 2 : 0) || 100;
@@ -728,6 +733,11 @@ export const useEditorState = () => {
         // Also flip the element's position relative to center
         const flippedElementX = centerX + (centerX - element.x);
         return { id: element.id, updates: { x: flippedElementX, path: flippedPath } };
+      } else if (element.type === 'text') {
+        // Flip text element horizontally
+        const elementWidth = element.width || 200;
+        const flippedX = centerX + (centerX - (element.x + elementWidth));
+        return { id: element.id, updates: { x: flippedX } };
       } else {
         // Flip regular elements horizontally
         const elementWidth = element.width || (element.radius ? element.radius * 2 : 0) || (element.radiusX ? element.radiusX * 2 : 0) || 100;
@@ -773,6 +783,11 @@ export const useEditorState = () => {
             maxY = Math.max(maxY, element.y + point.controlPoint2.y);
           }
         });
+      } else if (element.type === 'text') {
+        // For text elements - approximate height based on font size
+        const elementHeight = (element.fontSize || 16) * (element.lineHeight || 1.2);
+        minY = Math.min(minY, element.y);
+        maxY = Math.max(maxY, element.y + elementHeight);
       } else {
         // For regular elements (rect, circle, ellipse)
         const elementHeight = element.height || (element.radius ? element.radius * 2 : 0) || (element.radiusY ? element.radiusY * 2 : 0) || 100;
@@ -820,6 +835,11 @@ export const useEditorState = () => {
         // Also flip the element's position relative to center
         const flippedElementY = centerY + (centerY - element.y);
         return { id: element.id, updates: { y: flippedElementY, path: flippedPath } };
+      } else if (element.type === 'text') {
+        // Flip text element vertically
+        const elementHeight = (element.fontSize || 16) * (element.lineHeight || 1.2);
+        const flippedY = centerY + (centerY - (element.y + elementHeight));
+        return { id: element.id, updates: { y: flippedY } };
       } else {
         // Flip regular elements vertically
         const elementHeight = element.height || (element.radius ? element.radius * 2 : 0) || (element.radiusY ? element.radiusY * 2 : 0) || 100;
