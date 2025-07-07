@@ -851,6 +851,276 @@ export const useEditorState = () => {
     updateMultipleElements(updates);
   }, [state.elements, updateMultipleElements]);
 
+  // Alignment functions
+  const getContentBounds = useCallback(() => {
+    // Calculate the bounding box of all non-selected elements (SVG content bounds)
+    // This way, selected elements align to the bounds of other elements
+    const nonSelectedElements = state.elements.filter(el => !el.isSelected);
+    
+    if (nonSelectedElements.length === 0) {
+      // If no other elements, use a reasonable default or existing content bounds
+      if (state.elements.length === 0) {
+        return {
+          left: 0,
+          top: 0,
+          right: 800,
+          bottom: 600,
+          centerX: 400,
+          centerY: 300
+        };
+      } else {
+        // If only selected elements exist, use all elements as reference
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        state.elements.forEach(element => {
+          const bounds = getElementBounds(element);
+          minX = Math.min(minX, bounds.left);
+          minY = Math.min(minY, bounds.top);
+          maxX = Math.max(maxX, bounds.right);
+          maxY = Math.max(maxY, bounds.bottom);
+        });
+        return {
+          left: minX,
+          top: minY,
+          right: maxX,
+          bottom: maxY,
+          centerX: (minX + maxX) / 2,
+          centerY: (minY + maxY) / 2
+        };
+      }
+    }
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    nonSelectedElements.forEach(element => {
+      const bounds = getElementBounds(element);
+      minX = Math.min(minX, bounds.left);
+      minY = Math.min(minY, bounds.top);
+      maxX = Math.max(maxX, bounds.right);
+      maxY = Math.max(maxY, bounds.bottom);
+    });
+
+    return {
+      left: minX,
+      top: minY,
+      right: maxX,
+      bottom: maxY,
+      centerX: (minX + maxX) / 2,
+      centerY: (minY + maxY) / 2
+    };
+  }, [state.elements]);
+
+  const getElementBounds = useCallback((element: SVGElement) => {
+    if (element.type === 'rect') {
+      return {
+        left: element.x,
+        top: element.y,
+        right: element.x + (element.width || 100),
+        bottom: element.y + (element.height || 100),
+        centerX: element.x + (element.width || 100) / 2,
+        centerY: element.y + (element.height || 100) / 2,
+        width: element.width || 100,
+        height: element.height || 100
+      };
+    } else if (element.type === 'circle') {
+      const radius = element.radius || 50;
+      return {
+        left: element.x - radius,
+        top: element.y - radius,
+        right: element.x + radius,
+        bottom: element.y + radius,
+        centerX: element.x,
+        centerY: element.y,
+        width: radius * 2,
+        height: radius * 2
+      };
+    } else if (element.type === 'line') {
+      const x2 = element.x2 || element.x;
+      const y2 = element.y2 || element.y;
+      return {
+        left: Math.min(element.x, x2),
+        top: Math.min(element.y, y2),
+        right: Math.max(element.x, x2),
+        bottom: Math.max(element.y, y2),
+        centerX: (element.x + x2) / 2,
+        centerY: (element.y + y2) / 2,
+        width: Math.abs(x2 - element.x),
+        height: Math.abs(y2 - element.y)
+      };
+    } else if (element.type === 'text') {
+      const width = element.width || 200;
+      const height = (element.fontSize || 16) * (element.lineHeight || 1.2);
+      return {
+        left: element.x,
+        top: element.y,
+        right: element.x + width,
+        bottom: element.y + height,
+        centerX: element.x + width / 2,
+        centerY: element.y + height / 2,
+        width,
+        height
+      };
+    } else if (element.type === 'path' && element.path) {
+      // Calculate bounding box for path
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      element.path.points.forEach(point => {
+        const absoluteX = element.x + point.x;
+        const absoluteY = element.y + point.y;
+        minX = Math.min(minX, absoluteX);
+        minY = Math.min(minY, absoluteY);
+        maxX = Math.max(maxX, absoluteX);
+        maxY = Math.max(maxY, absoluteY);
+      });
+      return {
+        left: minX,
+        top: minY,
+        right: maxX,
+        bottom: maxY,
+        centerX: (minX + maxX) / 2,
+        centerY: (minY + maxY) / 2,
+        width: maxX - minX,
+        height: maxY - minY
+      };
+    } else {
+      // Default bounds for other types
+      return {
+        left: element.x,
+        top: element.y,
+        right: element.x + 100,
+        bottom: element.y + 100,
+        centerX: element.x + 50,
+        centerY: element.y + 50,
+        width: 100,
+        height: 100
+      };
+    }
+  }, []);
+
+  const alignLeft = useCallback(() => {
+    const selectedElements = state.elements.filter(el => el.isSelected);
+    if (selectedElements.length === 0) return;
+
+    const contentBounds = getContentBounds();
+    const targetLeft = contentBounds.left;
+
+    const updates = selectedElements.map(element => {
+      const elementBounds = getElementBounds(element);
+      const offsetX = targetLeft - elementBounds.left;
+      
+      if (element.type === 'circle') {
+        return { id: element.id, updates: { x: element.x + offsetX } };
+      } else {
+        return { id: element.id, updates: { x: element.x + offsetX } };
+      }
+    });
+
+    updateMultipleElements(updates);
+  }, [state.elements, getContentBounds, getElementBounds, updateMultipleElements]);
+
+  const alignRight = useCallback(() => {
+    const selectedElements = state.elements.filter(el => el.isSelected);
+    if (selectedElements.length === 0) return;
+
+    const contentBounds = getContentBounds();
+    const targetRight = contentBounds.right;
+
+    const updates = selectedElements.map(element => {
+      const elementBounds = getElementBounds(element);
+      const offsetX = targetRight - elementBounds.right;
+      
+      if (element.type === 'circle') {
+        return { id: element.id, updates: { x: element.x + offsetX } };
+      } else {
+        return { id: element.id, updates: { x: element.x + offsetX } };
+      }
+    });
+
+    updateMultipleElements(updates);
+  }, [state.elements, getContentBounds, getElementBounds, updateMultipleElements]);
+
+  const alignTop = useCallback(() => {
+    const selectedElements = state.elements.filter(el => el.isSelected);
+    if (selectedElements.length === 0) return;
+
+    const contentBounds = getContentBounds();
+    const targetTop = contentBounds.top;
+
+    const updates = selectedElements.map(element => {
+      const elementBounds = getElementBounds(element);
+      const offsetY = targetTop - elementBounds.top;
+      
+      if (element.type === 'circle') {
+        return { id: element.id, updates: { y: element.y + offsetY } };
+      } else {
+        return { id: element.id, updates: { y: element.y + offsetY } };
+      }
+    });
+
+    updateMultipleElements(updates);
+  }, [state.elements, getContentBounds, getElementBounds, updateMultipleElements]);
+
+  const alignBottom = useCallback(() => {
+    const selectedElements = state.elements.filter(el => el.isSelected);
+    if (selectedElements.length === 0) return;
+
+    const contentBounds = getContentBounds();
+    const targetBottom = contentBounds.bottom;
+
+    const updates = selectedElements.map(element => {
+      const elementBounds = getElementBounds(element);
+      const offsetY = targetBottom - elementBounds.bottom;
+      
+      if (element.type === 'circle') {
+        return { id: element.id, updates: { y: element.y + offsetY } };
+      } else {
+        return { id: element.id, updates: { y: element.y + offsetY } };
+      }
+    });
+
+    updateMultipleElements(updates);
+  }, [state.elements, getContentBounds, getElementBounds, updateMultipleElements]);
+
+  const alignCenterHorizontally = useCallback(() => {
+    const selectedElements = state.elements.filter(el => el.isSelected);
+    if (selectedElements.length === 0) return;
+
+    const contentBounds = getContentBounds();
+    const targetCenterX = contentBounds.centerX;
+
+    const updates = selectedElements.map(element => {
+      const elementBounds = getElementBounds(element);
+      const offsetX = targetCenterX - elementBounds.centerX;
+      
+      if (element.type === 'circle') {
+        return { id: element.id, updates: { x: element.x + offsetX } };
+      } else {
+        return { id: element.id, updates: { x: element.x + offsetX } };
+      }
+    });
+
+    updateMultipleElements(updates);
+  }, [state.elements, getContentBounds, getElementBounds, updateMultipleElements]);
+
+  const alignCenterVertically = useCallback(() => {
+    const selectedElements = state.elements.filter(el => el.isSelected);
+    if (selectedElements.length === 0) return;
+
+    const contentBounds = getContentBounds();
+    const targetCenterY = contentBounds.centerY;
+
+    const updates = selectedElements.map(element => {
+      const elementBounds = getElementBounds(element);
+      const offsetY = targetCenterY - elementBounds.centerY;
+      
+      if (element.type === 'circle') {
+        return { id: element.id, updates: { y: element.y + offsetY } };
+      } else {
+        return { id: element.id, updates: { y: element.y + offsetY } };
+      }
+    });
+
+    updateMultipleElements(updates);
+  }, [state.elements, getContentBounds, getElementBounds, updateMultipleElements]);
+
   return {
     state,
     actions: {
@@ -878,6 +1148,13 @@ export const useEditorState = () => {
       // Flip actions
       flipHorizontally,
       flipVertically,
+      // Alignment actions
+      alignLeft,
+      alignRight,
+      alignTop,
+      alignBottom,
+      alignCenterHorizontally,
+      alignCenterVertically,
     },
     undoRedo: {
       canUndo,

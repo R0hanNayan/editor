@@ -14,7 +14,7 @@ import { FileUpload } from '../common/FileUpload';
 import { PropertiesPanel } from '../panels/PropertiesPanel';
 import { MultiSelectionGroup } from './MultiSelectionGroup';
 import { VirtualizedElementList } from '../performance/VirtualizedElementList';
-import { Point, SVGElement } from '@/types/svg';
+import { Point, SVGElement, PathPoint } from '@/types/svg';
 import { getVisibleElements, throttleRaf } from '@/utils/performance';
 
 const CANVAS_WIDTH = 800;
@@ -82,6 +82,21 @@ export const SVGEditor: React.FC = () => {
   const lineStartPoint = useRef<Point | null>(null);
   const [previewLine, setPreviewLine] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
 
+  // Path drawing state
+  const isDrawingPath = useRef(false);
+  const currentPathId = useRef<string | null>(null);
+  const [pathPreview, setPathPreview] = useState<PathPoint[]>([]);
+
+  // Function to finish current path drawing
+  const finishPathDrawing = useCallback(() => {
+    if (isDrawingPath.current) {
+      isDrawingPath.current = false;
+      currentPathId.current = null;
+      setPathPreview([]);
+      actions.setTool('select');
+    }
+  }, [actions]);
+
   // Cleanup timeout on unmount
   React.useEffect(() => {
     return () => {
@@ -94,6 +109,39 @@ export const SVGEditor: React.FC = () => {
   // Add keyboard shortcuts for undo/redo and flip
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Handle path drawing completion
+      if (state.tool === 'path' && isDrawingPath.current) {
+        if (e.key === 'Enter' || e.key === 'Escape') {
+          e.preventDefault();
+          finishPathDrawing();
+          return;
+        } else if (e.key === 'c' && currentPathId.current) {
+          e.preventDefault();
+          // Close the path by adding a close command
+          const currentElement = state.elements.find(el => el.id === currentPathId.current);
+          if (currentElement && currentElement.path && currentElement.path.points.length > 1) {
+            const firstPoint = currentElement.path.points[0];
+            const closePoint: PathPoint = { 
+              id: String(currentElement.path.points.length + 1), 
+              type: 'close', 
+              x: firstPoint.x, 
+              y: firstPoint.y 
+            };
+            const updatedPoints = [...currentElement.path.points, closePoint];
+            
+            actions.updateElement(currentPathId.current, {
+              path: {
+                ...currentElement.path,
+                points: updatedPoints
+              }
+            });
+            
+            finishPathDrawing();
+          }
+          return;
+        }
+      }
+
       if (e.ctrlKey || e.metaKey) {
         if (e.key === 'z' && !e.shiftKey) {
           e.preventDefault();
@@ -117,6 +165,42 @@ export const SVGEditor: React.FC = () => {
           if (state.selectedElementIds.length > 0) {
             actions.flipVertically();
           }
+        } else if (e.key === 'ArrowLeft') {
+          // Ctrl+Left Arrow for align left
+          e.preventDefault();
+          if (state.selectedElementIds.length > 0) {
+            actions.alignLeft();
+          }
+        } else if (e.key === 'ArrowRight') {
+          // Ctrl+Right Arrow for align right
+          e.preventDefault();
+          if (state.selectedElementIds.length > 0) {
+            actions.alignRight();
+          }
+        } else if (e.key === 'ArrowUp') {
+          // Ctrl+Up Arrow for align top
+          e.preventDefault();
+          if (state.selectedElementIds.length > 0) {
+            actions.alignTop();
+          }
+        } else if (e.key === 'ArrowDown') {
+          // Ctrl+Down Arrow for align bottom
+          e.preventDefault();
+          if (state.selectedElementIds.length > 0) {
+            actions.alignBottom();
+          }
+        } else if (e.key === '|') {
+          // Ctrl+| for center vertically
+          e.preventDefault();
+          if (state.selectedElementIds.length > 0) {
+            actions.alignCenterVertically();
+          }
+        } else if (e.key === '-') {
+          // Ctrl+- for center horizontally
+          e.preventDefault();
+          if (state.selectedElementIds.length > 0) {
+            actions.alignCenterHorizontally();
+          }
         }
       }
     };
@@ -125,7 +209,7 @@ export const SVGEditor: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [actions.undo, actions.redo, actions.flipHorizontally, actions.flipVertically, undoRedo.canUndo, undoRedo.canRedo, state.selectedElementIds.length]);
+  }, [actions.undo, actions.redo, actions.flipHorizontally, actions.flipVertically, actions.alignLeft, actions.alignRight, actions.alignTop, actions.alignBottom, actions.alignCenterHorizontally, actions.alignCenterVertically, undoRedo.canUndo, undoRedo.canRedo, state.selectedElementIds.length]);
 
   // Add some initial demo shapes
   React.useEffect(() => {
@@ -283,7 +367,79 @@ export const SVGEditor: React.FC = () => {
       });
       actions.selectElement(id);
       actions.setTool('select');
+    } else if (state.tool === 'path') {
+      // Handle path drawing with multiple clicks
+      if (!isDrawingPath.current) {
+        // First click - start a new path
+        isDrawingPath.current = true;
+        const pathPoints: PathPoint[] = [
+          { id: '1', type: 'move', x: 0, y: 0 } // Start at 0,0 relative to element position
+        ];
+        const id = actions.addElement({
+          type: 'path',
+          x: pos.x, // Element position
+          y: pos.y, // Element position
+          stroke: '#333333',
+          strokeWidth: 2,
+          fill: 'transparent',
+          path: {
+            id: `path-${Date.now()}`,
+            points: pathPoints,
+            stroke: '#333333',
+            strokeWidth: 2,
+            fill: 'transparent',
+            isSelected: false
+          }
+        });
+        currentPathId.current = id;
+        setPathPreview(pathPoints);
+        actions.selectElement(id);
+      } else {
+        // Subsequent clicks - add points to the current path
+        if (currentPathId.current) {
+          const currentElement = state.elements.find(el => el.id === currentPathId.current);
+          if (currentElement && currentElement.path) {
+            const newPointId = String(currentElement.path.points.length + 1);
+            // Calculate relative position from element's origin
+            const relativeX = pos.x - currentElement.x;
+            const relativeY = pos.y - currentElement.y;
+            const newPoint: PathPoint = { 
+              id: newPointId, 
+              type: 'line', 
+              x: relativeX, 
+              y: relativeY 
+            };
+            const updatedPoints = [...currentElement.path.points, newPoint];
+            
+            actions.updateElement(currentPathId.current, {
+              path: {
+                ...currentElement.path,
+                points: updatedPoints
+              }
+            });
+            setPathPreview(updatedPoints);
+          }
+        }
+      }
     }
+  };
+
+  // Handle double-click to finish path drawing
+  const handleStageDoubleClick = (e: KonvaEventObject<MouseEvent>) => {
+    if (state.tool === 'path' && isDrawingPath.current) {
+      e.evt.preventDefault();
+      finishPathDrawing();
+    }
+  };
+
+  // Handle right-click to finish path drawing or show context menu
+  const handleStageContextMenu = (e: KonvaEventObject<PointerEvent>) => {
+    e.evt.preventDefault(); // Prevent browser context menu
+    
+    if (state.tool === 'path' && isDrawingPath.current) {
+      finishPathDrawing();
+    }
+    // Could add other context menu functionality here in the future
   };
 
   const handleStageMouseMove = useCallback(
@@ -298,6 +454,24 @@ export const SVGEditor: React.FC = () => {
         if (currentElement && currentElement.points) {
           const newPoints = [...currentElement.points, pos.x, pos.y];
           actions.updateDrawingLine(currentDrawingId.current, newPoints);
+        }
+      } else if (state.tool === 'path' && isDrawingPath.current && pathPreview.length > 0) {
+        // Update path preview with current mouse position
+        const currentElement = state.elements.find(el => el.id === currentPathId.current);
+        if (currentElement && currentElement.path) {
+          const lastPoint = currentElement.path.points[currentElement.path.points.length - 1];
+          
+          // Convert last point from relative to absolute coordinates
+          const absoluteX = currentElement.x + lastPoint.x;
+          const absoluteY = currentElement.y + lastPoint.y;
+          
+          // Create a preview line from last point to current mouse position
+          setPreviewLine({
+            x1: absoluteX,
+            y1: absoluteY,
+            x2: pos.x,
+            y2: pos.y
+          });
         }
       } else if (state.tool === 'select' && dragStart) {
         const stage = e.target.getStage();
@@ -503,8 +677,37 @@ export const SVGEditor: React.FC = () => {
         canRedo={undoRedo.canRedo}
         onFlipHorizontal={actions.flipHorizontally}
         onFlipVertical={actions.flipVertically}
+        onAlignLeft={actions.alignLeft}
+        onAlignRight={actions.alignRight}
+        onAlignTop={actions.alignTop}
+        onAlignBottom={actions.alignBottom}
+        onAlignCenterHorizontally={actions.alignCenterHorizontally}
+        onAlignCenterVertically={actions.alignCenterVertically}
         hasSelection={state.selectedElementIds.length > 0}
       />
+      
+      {/* Path Drawing Status Bar */}
+      {state.tool === 'path' && isDrawingPath.current && (
+        <div className="bg-blue-50 border-b border-blue-200 px-4 py-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium text-blue-800">
+                Path Drawing Active
+              </span>
+              <span className="text-xs text-blue-600">
+                {pathPreview.length} points
+              </span>
+            </div>
+            <div className="flex items-center gap-4 text-xs text-blue-600">
+              <span><strong>Double-click</strong> to finish</span>
+              <span><strong>Right-click</strong> to finish</span>
+              <span><strong>Enter/Esc</strong> to finish</span>
+              <span><strong>C</strong> to close path</span>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="flex flex-1">
         {/* Sidebar */}
@@ -632,6 +835,8 @@ export const SVGEditor: React.FC = () => {
                 x={state.pan.x}
                 y={state.pan.y}
                 onClick={handleStageClick}
+                onDblClick={handleStageDoubleClick}
+                onContextMenu={handleStageContextMenu}
                 onMouseDown={handleStageMouseDown}
                 onMouseMove={handleStageMouseMove}
                 onMouseUp={handleStageMouseUp}
@@ -683,6 +888,18 @@ export const SVGEditor: React.FC = () => {
                     perfectDrawEnabled={false}
                   />
                 )}
+
+                {/* Preview Line - only show when drawing a path */}
+                {state.tool === 'path' && previewLine && (
+                  <Line
+                    points={[previewLine.x1, previewLine.y1, previewLine.x2, previewLine.y2]}
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    dash={[4, 4]}
+                    listening={false}
+                    perfectDrawEnabled={false}
+                  />
+                )}
               </Layer>
             </Stage>
             </div>
@@ -699,6 +916,12 @@ export const SVGEditor: React.FC = () => {
                 actions.updateElement(selectedId, updates);
               }
             }}
+            onAlignLeft={actions.alignLeft}
+            onAlignRight={actions.alignRight}
+            onAlignTop={actions.alignTop}
+            onAlignBottom={actions.alignBottom}
+            onAlignCenterHorizontally={actions.alignCenterHorizontally}
+            onAlignCenterVertically={actions.alignCenterVertically}
           />
         </div>
       </div>

@@ -7,11 +7,23 @@ import { useNumberInput } from '@/hooks/useNumberInput';
 interface PropertiesPanelProps {
   selectedElement: SVGElement | null;
   onUpdateElement: (updates: Partial<SVGElement>) => void;
+  onAlignLeft?: () => void;
+  onAlignRight?: () => void;
+  onAlignTop?: () => void;
+  onAlignBottom?: () => void;
+  onAlignCenterHorizontally?: () => void;
+  onAlignCenterVertically?: () => void;
 }
 
 export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   selectedElement,
   onUpdateElement,
+  onAlignLeft,
+  onAlignRight,
+  onAlignTop,
+  onAlignBottom,
+  onAlignCenterHorizontally,
+  onAlignCenterVertically,
 }) => {
   // Local state for font size input to allow clearing
   const [fontSizeInput, setFontSizeInput] = useState<string>('');
@@ -139,6 +151,20 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           </div>
         )}
 
+        {selectedElement.type === 'path' && (
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide">Path Points</label>
+            <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+              {selectedElement.path?.points ? `${selectedElement.path.points.length} points` : 'No points'}
+            </div>
+            <div className="text-xs text-gray-400 mt-1 space-y-1">
+              <div><strong>Drawing:</strong> Click to add points</div>
+              <div><strong>Finish:</strong> Double-click, Right-click, or press Enter/Escape</div>
+              <div><strong>Close path:</strong> Press 'C' while drawing</div>
+            </div>
+          </div>
+        )}
+
         {selectedElement.type === 'line' && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-2">
@@ -200,6 +226,64 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             <span>-180°</span>
             <span className="font-medium">{Math.round(selectedElement.rotation || 0)}°</span>
             <span>180°</span>
+          </div>
+        </div>
+
+        {/* Alignment */}
+        <div className="space-y-2">
+          <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide">Alignment</label>
+          <div className="grid grid-cols-3 gap-1">
+            <button
+              onClick={onAlignLeft}
+              disabled={!onAlignLeft}
+              className="px-2 py-1 text-xs font-medium rounded border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Align Left"
+            >
+              ←
+            </button>
+            <button
+              onClick={onAlignCenterHorizontally}
+              disabled={!onAlignCenterHorizontally}
+              className="px-2 py-1 text-xs font-medium rounded border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Center Horizontally"
+            >
+              ↔
+            </button>
+            <button
+              onClick={onAlignRight}
+              disabled={!onAlignRight}
+              className="px-2 py-1 text-xs font-medium rounded border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Align Right"
+            >
+              →
+            </button>
+            <button
+              onClick={onAlignTop}
+              disabled={!onAlignTop}
+              className="px-2 py-1 text-xs font-medium rounded border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Align Top"
+            >
+              ↑
+            </button>
+            <button
+              onClick={onAlignCenterVertically}
+              disabled={!onAlignCenterVertically}
+              className="px-2 py-1 text-xs font-medium rounded border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Center Vertically"
+            >
+              ↕
+            </button>
+            <button
+              onClick={onAlignBottom}
+              disabled={!onAlignBottom}
+              className="px-2 py-1 text-xs font-medium rounded border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Align Bottom"
+            >
+              ↓
+            </button>
+          </div>
+          <div className="text-xs text-gray-400">
+            Aligns selected elements to the bounds of other elements
           </div>
         </div>
 

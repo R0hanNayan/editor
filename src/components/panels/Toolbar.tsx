@@ -17,7 +17,14 @@ import {
   Redo,
   FlipHorizontal,
   FlipVertical,
-  Type
+  Type,
+  PenTool,
+  AlignLeft,
+  AlignRight,
+  AlignCenterHorizontal,
+  AlignCenterVertical,
+  AlignStartVertical,
+  AlignEndVertical
 } from 'lucide-react';
 import { EditorState } from '@/types/svg';
 
@@ -35,6 +42,12 @@ interface ToolbarProps {
   canRedo: boolean;
   onFlipHorizontal: () => void;
   onFlipVertical: () => void;
+  onAlignLeft: () => void;
+  onAlignRight: () => void;
+  onAlignTop: () => void;
+  onAlignBottom: () => void;
+  onAlignCenterHorizontally: () => void;
+  onAlignCenterVertically: () => void;
   hasSelection: boolean;
 }
 
@@ -52,13 +65,19 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   canRedo,
   onFlipHorizontal,
   onFlipVertical,
+  onAlignLeft,
+  onAlignRight,
+  onAlignTop,
+  onAlignBottom,
+  onAlignCenterHorizontally,
+  onAlignCenterVertically,
   hasSelection,
 }) => {
   const tools = [
     { id: 'select' as const, icon: MousePointer, label: 'Select' },
     { id: 'pencil' as const, icon: Pencil, label: 'Pencil' },
     { id: 'line' as const, icon: Minus, label: 'Line' },
-    { id: 'path' as const, icon: Move, label: 'Path' },
+    { id: 'path' as const, icon: PenTool, label: 'Path' },
     { id: 'rect' as const, icon: Square, label: 'Rectangle' },
     { id: 'circle' as const, icon: Circle, label: 'Circle' },
     { id: 'text' as const, icon: Type, label: 'Text' },
@@ -146,6 +165,55 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                   title="Flip Vertically (Ctrl+V)"
                 >
                   <FlipVertical size={16} />
+                </button>
+              </div>
+            )}
+
+            {/* Alignment Actions - only show when elements are selected */}
+            {hasSelection && (
+              <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1 border border-gray-200">
+                <button
+                  onClick={onAlignLeft}
+                  className="p-1.5 text-gray-600 hover:bg-gray-200 rounded transition-colors"
+                  title="Align Left (Ctrl+←)"
+                >
+                  <AlignLeft size={16} />
+                </button>
+                <button
+                  onClick={onAlignCenterHorizontally}
+                  className="p-1.5 text-gray-600 hover:bg-gray-200 rounded transition-colors"
+                  title="Center Horizontally (Ctrl+-)"
+                >
+                  <AlignCenterHorizontal size={16} />
+                </button>
+                <button
+                  onClick={onAlignRight}
+                  className="p-1.5 text-gray-600 hover:bg-gray-200 rounded transition-colors"
+                  title="Align Right (Ctrl+→)"
+                >
+                  <AlignRight size={16} />
+                </button>
+                <div className="w-px h-4 bg-gray-300 mx-1"></div>
+                <button
+                  onClick={onAlignTop}
+                  className="p-1.5 text-gray-600 hover:bg-gray-200 rounded transition-colors"
+                  title="Align Top (Ctrl+↑)"
+                >
+                  <AlignStartVertical size={16} />
+                </button>
+                <button
+                  onClick={onAlignCenterVertically}
+                  className="p-1.5 text-gray-600 hover:bg-gray-200 rounded transition-colors"
+                  title="Center Vertically (Ctrl+|)"
+                >
+                  <AlignCenterVertical size={16} />
+                </button>
+                <button
+                  onClick={onAlignBottom}
+                  className="p-1.5 text-gray-600 hover:bg-gray-200 rounded transition-colors"
+                  title="Align Bottom (Ctrl+↓)"
+                >
+                  <AlignEndVertical size={16} />
                 </button>
               </div>
             )}
