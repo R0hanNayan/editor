@@ -570,8 +570,28 @@ export const useEditorState = () => {
         elementMaxY = Math.max(element.y, element.y2);
       }
 
-      // Check if rectangles intersect
-      return !(elementMaxX < minX || elementMinX > maxX || elementMaxY < minY || elementMinY > maxY);
+      // Check if element is mostly contained within selection rectangle
+      // Calculate overlap area vs element area for more precise selection
+      const overlapMinX = Math.max(elementMinX, minX);
+      const overlapMaxX = Math.min(elementMaxX, maxX);
+      const overlapMinY = Math.max(elementMinY, minY);
+      const overlapMaxY = Math.min(elementMaxY, maxY);
+      
+      // Only select if there's actual overlap
+      if (overlapMaxX <= overlapMinX || overlapMaxY <= overlapMinY) {
+        return false;
+      }
+      
+      // Calculate overlap percentage - require at least 50% overlap for selection
+      const elementArea = (elementMaxX - elementMinX) * (elementMaxY - elementMinY);
+      const overlapArea = (overlapMaxX - overlapMinX) * (overlapMaxY - overlapMinY);
+      const overlapPercentage = elementArea > 0 ? overlapArea / elementArea : 0;
+      
+      // For small elements (like lines or small shapes), use lower threshold
+      const isSmallElement = elementArea < 500; // Less than 500 square pixels
+      const threshold = isSmallElement ? 0.3 : 0.5; // 30% for small elements, 50% for larger ones
+      
+      return overlapPercentage >= threshold;
     }).map(el => el.id);
   }, [state.elements]);
 

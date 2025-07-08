@@ -10,6 +10,8 @@ interface MultiSelectionGroupProps {
   selectedElements: SVGElement[];
   onUpdateElements: (updates: { id: string; updates: Partial<SVGElement> }[]) => void;
   children: React.ReactNode;
+  selectedChildren: React.ReactNode;
+  unselectedChildren: React.ReactNode;
 }
 
 // Create a single batch updater instance for all multi-selection operations
@@ -26,7 +28,8 @@ const normalizeRotation = (rotation: number): number => {
 export const MultiSelectionGroup: React.FC<MultiSelectionGroupProps> = React.memo(({
   selectedElements,
   onUpdateElements,
-  children,
+  selectedChildren,
+  unselectedChildren,
 }) => {
   const groupRef = useRef<Konva.Group>(null);
   const trRef = useRef<Konva.Transformer>(null);
@@ -278,9 +281,14 @@ export const MultiSelectionGroup: React.FC<MultiSelectionGroupProps> = React.mem
 
   return (
     <>
+      {/* Unselected elements - rendered normally, not affected by group drag */}
+      {unselectedChildren}
+      
+      {/* Selected elements - wrapped in draggable group for multi-selection */}
       <Group ref={groupRef} draggable={isMultiSelect} onDragEnd={handleGroupDragEnd}>
-        {children}
+        {selectedChildren}
       </Group>
+      
       {isMultiSelect && (
         <Transformer
           ref={trRef}

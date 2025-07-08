@@ -591,75 +591,94 @@ export const SVGEditor: React.FC = () => {
     return state.elements;
   }, [state.elements, state.pan, state.zoom]);
 
-  // Memoize elements to prevent unnecessary re-renders
-  const renderedElements = useMemo(() => {
-    const isMultiSelected = state.selectedElementIds.length > 1;
-    
-    return visibleElements.map(element => {
-      if (element.type === 'path') {
-        return (
-          <PathElement
-            key={element.id}
-            element={element}
-            isSelected={element.isSelected}
-            isMultiSelected={isMultiSelected}
-            onSelect={() => handleElementSelect(element.id, false)} // Explicitly pass false for single click
-            onUpdate={(updates: Partial<SVGElement>) => actions.updateElement(element.id, updates)}
-          />
-        );
-      } else if (element.type === 'drawing') {
-        return (
-          <DrawingElement
-            key={element.id}
-            element={element}
-            isSelected={element.isSelected}
-            isMultiSelected={isMultiSelected}
-            onSelect={() => handleElementSelect(element.id, false)}
-            onUpdate={(elementId: string, updates: Partial<SVGElement>) => actions.updateElement(elementId, updates)}
-          />
-        );
-      } else if (element.type === 'line') {
-        return (
-          <LineElement
-            key={element.id}
-            element={element}
-            isSelected={element.isSelected}
-            isMultiSelected={isMultiSelected}
-            onSelect={() => handleElementSelect(element.id, false)}
-            onUpdate={(elementId: string, updates: Partial<SVGElement>) => actions.updateElement(elementId, updates)}
-          />
-        );
-      } else if (element.type === 'text') {
-        return (
-          <TextElement
-            key={element.id}
-            element={element}
-            isSelected={element.isSelected}
-            isMultiSelected={isMultiSelected}
-            onSelect={() => handleElementSelect(element.id, false)}
-            onUpdate={(elementId: string, updates: Partial<SVGElement>) => actions.updateElement(elementId, updates)}
-          />
-        );
-      } else {
-        return (
-          <ShapeElement
-            key={element.id}
-            element={element}
-            isSelected={element.isSelected}
-            isMultiSelected={isMultiSelected}
-            onSelect={() => handleElementSelect(element.id, false)} // Explicitly pass false for single click
-            onUpdate={(updates: Partial<SVGElement>) => actions.updateElement(element.id, updates)}
-          />
-        );
-      }
-    });
-  }, [visibleElements, state.selectedElementIds, handleElementSelect, actions]);
-
   // Memoize selected elements for MultiSelectionGroup
   const selectedElements = useMemo(() => 
     state.elements.filter(el => el.isSelected),
     [state.elements]
   );
+
+  // Separate selected and unselected rendered elements
+  const { selectedRenderedElements, unselectedRenderedElements } = useMemo(() => {
+    const hasMultipleSelected = state.selectedElementIds.length > 1;
+    
+    const selected: React.ReactNode[] = [];
+    const unselected: React.ReactNode[] = [];
+    
+    visibleElements.forEach(element => {
+      // Only set isMultiSelected to true if this element is selected AND there are multiple selected elements
+      const isMultiSelected = element.isSelected && hasMultipleSelected;
+      
+      const elementNode = (() => {
+        if (element.type === 'path') {
+          return (
+            <PathElement
+              key={element.id}
+              element={element}
+              isSelected={element.isSelected}
+              isMultiSelected={isMultiSelected}
+              onSelect={() => handleElementSelect(element.id, false)} // Explicitly pass false for single click
+              onUpdate={(updates: Partial<SVGElement>) => actions.updateElement(element.id, updates)}
+            />
+          );
+        } else if (element.type === 'drawing') {
+          return (
+            <DrawingElement
+              key={element.id}
+              element={element}
+              isSelected={element.isSelected}
+              isMultiSelected={isMultiSelected}
+              onSelect={() => handleElementSelect(element.id, false)}
+              onUpdate={(elementId: string, updates: Partial<SVGElement>) => actions.updateElement(elementId, updates)}
+            />
+          );
+        } else if (element.type === 'line') {
+          return (
+            <LineElement
+              key={element.id}
+              element={element}
+              isSelected={element.isSelected}
+              isMultiSelected={isMultiSelected}
+              onSelect={() => handleElementSelect(element.id, false)}
+              onUpdate={(elementId: string, updates: Partial<SVGElement>) => actions.updateElement(elementId, updates)}
+            />
+          );
+        } else if (element.type === 'text') {
+          return (
+            <TextElement
+              key={element.id}
+              element={element}
+              isSelected={element.isSelected}
+              isMultiSelected={isMultiSelected}
+              onSelect={() => handleElementSelect(element.id, false)}
+              onUpdate={(elementId: string, updates: Partial<SVGElement>) => actions.updateElement(elementId, updates)}
+            />
+          );
+        } else {
+          return (
+            <ShapeElement
+              key={element.id}
+              element={element}
+              isSelected={element.isSelected}
+              isMultiSelected={isMultiSelected}
+              onSelect={() => handleElementSelect(element.id, false)} // Explicitly pass false for single click
+              onUpdate={(updates: Partial<SVGElement>) => actions.updateElement(element.id, updates)}
+            />
+          );
+        }
+      })();
+      
+      if (element.isSelected) {
+        selected.push(elementNode);
+      } else {
+        unselected.push(elementNode);
+      }
+    });
+    
+    return {
+      selectedRenderedElements: selected,
+      unselectedRenderedElements: unselected,
+    };
+  }, [visibleElements, state.selectedElementIds, handleElementSelect, actions]);
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
@@ -863,9 +882,10 @@ export const SVGEditor: React.FC = () => {
                 <MultiSelectionGroup
                   selectedElements={selectedElements}
                   onUpdateElements={actions.updateMultipleElements}
-                >
-                  {renderedElements}
-                </MultiSelectionGroup>
+                  selectedChildren={selectedRenderedElements}
+                  unselectedChildren={unselectedRenderedElements}
+                  children={null}
+                />
                 
                 {/* Selection Rectangle */}
                 {selectionRect && (
