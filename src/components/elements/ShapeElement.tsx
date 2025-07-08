@@ -230,8 +230,8 @@ export const ShapeElement: React.FC<ShapeElementProps> = React.memo(({
               return {
                 width: radius * 2,
                 height: radius * 2,
-                centerX: element.x + radius,
-                centerY: element.y + radius
+                centerX: element.x, // For circles, x,y IS the center
+                centerY: element.y  // For circles, x,y IS the center
               };
             } else if (element.type === 'ellipse') {
               const rx = element.radiusX || 50;
@@ -239,8 +239,8 @@ export const ShapeElement: React.FC<ShapeElementProps> = React.memo(({
               return {
                 width: rx * 2,
                 height: ry * 2,
-                centerX: element.x + rx,
-                centerY: element.y + ry
+                centerX: element.x, // For ellipses, x,y IS the center
+                centerY: element.y  // For ellipses, x,y IS the center
               };
             }
             return { width: 100, height: 100, centerX: element.x + 50, centerY: element.y + 50 };

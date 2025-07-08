@@ -4,7 +4,6 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Text, Group, Transformer } from 'react-konva';
 import { SVGElement } from '@/types/svg';
 import Konva from 'konva';
-import { SkewHandles } from '../common/SkewHandles';
 
 interface TextElementProps {
   element: SVGElement;
@@ -69,6 +68,19 @@ export const TextElement: React.FC<TextElementProps> = React.memo(({
     requestAnimationFrame(() => {
       onUpdate(element.id, { x: pos.x, y: pos.y });
     });
+  };
+
+  const handleTransform = () => {
+    if (textRef.current) {
+      const node = textRef.current;
+      // Reset scale and update width for proper text wrapping during transform
+      // This ensures text wraps to new lines instead of just compressing
+      const newWidth = Math.max(50, node.width() * node.scaleX());
+      node.setAttrs({
+        width: newWidth,
+        scaleX: 1,
+      });
+    }
   };
 
   const handleTransformEnd = () => {
@@ -317,6 +329,7 @@ export const TextElement: React.FC<TextElementProps> = React.memo(({
         // Enable drag for single selection, disable for multi-selection
         draggable={!isMultiSelected && isSelected}
         onDragEnd={handleDragEnd}
+        onTransform={handleTransform}
         onTransformEnd={handleTransformEnd}
         perfectDrawEnabled={false}
         // Add visual feedback for selection
@@ -339,21 +352,8 @@ export const TextElement: React.FC<TextElementProps> = React.memo(({
             }
             return newBox;
           }}
+          onTransform={handleTransform}
           onTransformEnd={handleTransformEnd}
-        />
-      )}
-      
-      {/* Skew Mode Handles */}
-      {isSelected && !isMultiSelected && element.selectionMode === 'skew' && (
-        <SkewHandles
-          element={element}
-          onUpdate={(updates) => onUpdate(element.id, updates)}
-          getBounds={() => ({
-            width: element.width || 200,
-            height: (element.fontSize || 16) * (element.lineHeight || 1.2),
-            centerX: element.x + (element.width || 200) / 2,
-            centerY: element.y + ((element.fontSize || 16) * (element.lineHeight || 1.2)) / 2
-          })}
         />
       )}
     </Group>

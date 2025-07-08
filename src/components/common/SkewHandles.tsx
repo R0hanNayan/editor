@@ -20,18 +20,41 @@ export const SkewHandles: React.FC<SkewHandlesProps> = ({ element, onUpdate, get
   const MIN_BASE_DISPLACEMENT = 200; // Minimum displacement for consistent behavior
   const MAX_SKEW_ANGLE = 45; // Maximum skew angle in degrees
 
-  // Calculate handle positions
+  // Helper function to rotate a point around the center
+  const rotatePoint = (point: { x: number; y: number }, angle: number, center: { x: number; y: number }) => {
+    const rad = (angle * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const dx = point.x - center.x;
+    const dy = point.y - center.y;
+    return {
+      x: center.x + dx * cos - dy * sin,
+      y: center.y + dx * sin + dy * cos,
+    };
+  };
+
+  // Calculate handle positions with rotation consideration
   const handlePositions = useMemo(() => {
     const margin = 20; // Distance from the shape edge
-    return {
-      // Top and bottom handles for horizontal skew
+    const rotation = element.rotation || 0;
+    const center = { x: centerX, y: centerY };
+    
+    // Calculate base positions (before rotation)
+    const basePositions = {
       topCenter: { x: centerX, y: centerY - height/2 - margin },
       bottomCenter: { x: centerX, y: centerY + height/2 + margin },
-      // Left and right handles for vertical skew
       leftCenter: { x: centerX - width/2 - margin, y: centerY },
       rightCenter: { x: centerX + width/2 + margin, y: centerY },
     };
-  }, [centerX, centerY, width, height]);
+
+    // Apply rotation to each position
+    return {
+      topCenter: rotatePoint(basePositions.topCenter, rotation, center),
+      bottomCenter: rotatePoint(basePositions.bottomCenter, rotation, center),
+      leftCenter: rotatePoint(basePositions.leftCenter, rotation, center),
+      rightCenter: rotatePoint(basePositions.rightCenter, rotation, center),
+    };
+  }, [centerX, centerY, width, height, element.rotation]);
 
   // Helper function to calculate displacement from skew value
   const getDisplacementFromSkew = (skewValue: number, dimension: number) => {
@@ -48,45 +71,88 @@ export const SkewHandles: React.FC<SkewHandlesProps> = ({ element, onUpdate, get
 
   const handleSkewDrag = (handleType: 'horizontal' | 'vertical', e: Konva.KonvaEventObject<DragEvent>) => {
     const pos = e.target.position();
-    const initialPos = handleType === 'horizontal' 
-      ? (e.target.name() === 'top' ? handlePositions.topCenter : handlePositions.bottomCenter)
-      : (e.target.name() === 'left' ? handlePositions.leftCenter : handlePositions.rightCenter);
-
+    const rotation = element.rotation || 0;
+    const center = { x: centerX, y: centerY };
+    
+    // Calculate the initial position accounting for rotation
+    const margin = 20;
+    let initialPos: { x: number; y: number };
+    
     if (handleType === 'horizontal') {
-      const deltaX = pos.x - initialPos.x;
-      const skewValue = getSkewFromDisplacement(deltaX, width);
+      const basePos = e.target.name() === 'top' 
+        ? { x: centerX, y: centerY - height/2 - margin }
+        : { x: centerX, y: centerY + height/2 + margin };
+      initialPos = rotatePoint(basePos, rotation, center);
+      
+      // For rotated elements, we need to transform the drag delta back to the element's local coordinate system
+      const dragDelta = { x: pos.x - initialPos.x, y: pos.y - initialPos.y };
+      const inverseDelta = rotatePoint(dragDelta, -rotation, { x: 0, y: 0 });
+      
+      const skewValue = getSkewFromDisplacement(inverseDelta.x, width);
       onUpdate({ skewX: skewValue });
     } else {
-      const deltaY = pos.y - initialPos.y;
-      const skewValue = getSkewFromDisplacement(deltaY, height);
+      const basePos = e.target.name() === 'left'
+        ? { x: centerX - width/2 - margin, y: centerY }
+        : { x: centerX + width/2 + margin, y: centerY };
+      initialPos = rotatePoint(basePos, rotation, center);
+      
+      // For rotated elements, we need to transform the drag delta back to the element's local coordinate system
+      const dragDelta = { x: pos.x - initialPos.x, y: pos.y - initialPos.y };
+      const inverseDelta = rotatePoint(dragDelta, -rotation, { x: 0, y: 0 });
+      
+      const skewValue = getSkewFromDisplacement(inverseDelta.y, height);
       onUpdate({ skewY: skewValue });
     }
   };
 
   const resetHandlePosition = (handleType: 'horizontal' | 'vertical', handleName: string) => {
     // Reset handle position when skew changes from other sources (like sliders)
+    const rotation = element.rotation || 0;
+    const center = { x: centerX, y: centerY };
+    
     if (handleType === 'horizontal') {
       const currentSkew = element.skewX || 0;
       const displacement = getDisplacementFromSkew(currentSkew, width);
-      return handleName === 'top' 
+      const basePos = handleName === 'top' 
         ? { x: handlePositions.topCenter.x + displacement, y: handlePositions.topCenter.y }
         : { x: handlePositions.bottomCenter.x + displacement, y: handlePositions.bottomCenter.y };
+      
+      // If there's rotation, we need to apply additional rotation to the displacement
+      if (rotation !== 0) {
+        const baseCenter = handleName === 'top'
+          ? { x: centerX, y: centerY - height/2 - 20 }
+          : { x: centerX, y: centerY + height/2 + 20 };
+        const displacedBase = { x: baseCenter.x + displacement, y: baseCenter.y };
+        return rotatePoint(displacedBase, rotation, center);
+      }
+      return basePos;
     } else {
       const currentSkew = element.skewY || 0;
       const displacement = getDisplacementFromSkew(currentSkew, height);
-      return handleName === 'left'
+      const basePos = handleName === 'left'
         ? { x: handlePositions.leftCenter.x, y: handlePositions.leftCenter.y + displacement }
         : { x: handlePositions.rightCenter.x, y: handlePositions.rightCenter.y + displacement };
+      
+      // If there's rotation, we need to apply additional rotation to the displacement
+      if (rotation !== 0) {
+        const baseCenter = handleName === 'left'
+          ? { x: centerX - width/2 - 20, y: centerY }
+          : { x: centerX + width/2 + 20, y: centerY };
+        const displacedBase = { x: baseCenter.x, y: baseCenter.y + displacement };
+        return rotatePoint(displacedBase, rotation, center);
+      }
+      return basePos;
     }
   };
 
   return (
-    <Group>
+    <Group zIndex={1000}>
       {/* Guide lines */}
       <Line
         points={[
-          handlePositions.topCenter.x + getDisplacementFromSkew(element.skewX || 0, width), handlePositions.topCenter.y,
-          centerX, centerY - height/2
+          resetHandlePosition('horizontal', 'top').x, resetHandlePosition('horizontal', 'top').y,
+          rotatePoint({ x: centerX - width/2, y: centerY - height/2 }, element.rotation || 0, { x: centerX, y: centerY }).x,
+          rotatePoint({ x: centerX - width/2, y: centerY - height/2 }, element.rotation || 0, { x: centerX, y: centerY }).y
         ]}
         stroke="#eab308"
         strokeWidth={1}
@@ -96,8 +162,9 @@ export const SkewHandles: React.FC<SkewHandlesProps> = ({ element, onUpdate, get
       />
       <Line
         points={[
-          handlePositions.bottomCenter.x + getDisplacementFromSkew(element.skewX || 0, width), handlePositions.bottomCenter.y,
-          centerX, centerY + height/2
+          resetHandlePosition('horizontal', 'top').x, resetHandlePosition('horizontal', 'top').y,
+          rotatePoint({ x: centerX + width/2, y: centerY - height/2 }, element.rotation || 0, { x: centerX, y: centerY }).x,
+          rotatePoint({ x: centerX + width/2, y: centerY - height/2 }, element.rotation || 0, { x: centerX, y: centerY }).y
         ]}
         stroke="#eab308"
         strokeWidth={1}
@@ -107,8 +174,9 @@ export const SkewHandles: React.FC<SkewHandlesProps> = ({ element, onUpdate, get
       />
       <Line
         points={[
-          handlePositions.leftCenter.x, handlePositions.leftCenter.y + getDisplacementFromSkew(element.skewY || 0, height),
-          centerX - width/2, centerY
+          resetHandlePosition('horizontal', 'bottom').x, resetHandlePosition('horizontal', 'bottom').y,
+          rotatePoint({ x: centerX - width/2, y: centerY + height/2 }, element.rotation || 0, { x: centerX, y: centerY }).x,
+          rotatePoint({ x: centerX - width/2, y: centerY + height/2 }, element.rotation || 0, { x: centerX, y: centerY }).y
         ]}
         stroke="#eab308"
         strokeWidth={1}
@@ -118,8 +186,57 @@ export const SkewHandles: React.FC<SkewHandlesProps> = ({ element, onUpdate, get
       />
       <Line
         points={[
-          handlePositions.rightCenter.x, handlePositions.rightCenter.y + getDisplacementFromSkew(element.skewY || 0, height),
-          centerX + width/2, centerY
+          resetHandlePosition('horizontal', 'bottom').x, resetHandlePosition('horizontal', 'bottom').y,
+          rotatePoint({ x: centerX + width/2, y: centerY + height/2 }, element.rotation || 0, { x: centerX, y: centerY }).x,
+          rotatePoint({ x: centerX + width/2, y: centerY + height/2 }, element.rotation || 0, { x: centerX, y: centerY }).y
+        ]}
+        stroke="#eab308"
+        strokeWidth={1}
+        dash={[3, 3]}
+        opacity={0.7}
+        listening={false}
+      />
+      <Line
+        points={[
+          resetHandlePosition('vertical', 'left').x, resetHandlePosition('vertical', 'left').y,
+          rotatePoint({ x: centerX - width/2, y: centerY - height/2 }, element.rotation || 0, { x: centerX, y: centerY }).x,
+          rotatePoint({ x: centerX - width/2, y: centerY - height/2 }, element.rotation || 0, { x: centerX, y: centerY }).y
+        ]}
+        stroke="#eab308"
+        strokeWidth={1}
+        dash={[3, 3]}
+        opacity={0.7}
+        listening={false}
+      />
+      <Line
+        points={[
+          resetHandlePosition('vertical', 'left').x, resetHandlePosition('vertical', 'left').y,
+          rotatePoint({ x: centerX - width/2, y: centerY + height/2 }, element.rotation || 0, { x: centerX, y: centerY }).x,
+          rotatePoint({ x: centerX - width/2, y: centerY + height/2 }, element.rotation || 0, { x: centerX, y: centerY }).y
+        ]}
+        stroke="#eab308"
+        strokeWidth={1}
+        dash={[3, 3]}
+        opacity={0.7}
+        listening={false}
+      />
+      <Line
+        points={[
+          resetHandlePosition('vertical', 'right').x, resetHandlePosition('vertical', 'right').y,
+          rotatePoint({ x: centerX + width/2, y: centerY - height/2 }, element.rotation || 0, { x: centerX, y: centerY }).x,
+          rotatePoint({ x: centerX + width/2, y: centerY - height/2 }, element.rotation || 0, { x: centerX, y: centerY }).y
+        ]}
+        stroke="#eab308"
+        strokeWidth={1}
+        dash={[3, 3]}
+        opacity={0.7}
+        listening={false}
+      />
+      <Line
+        points={[
+          resetHandlePosition('vertical', 'right').x, resetHandlePosition('vertical', 'right').y,
+          rotatePoint({ x: centerX + width/2, y: centerY + height/2 }, element.rotation || 0, { x: centerX, y: centerY }).x,
+          rotatePoint({ x: centerX + width/2, y: centerY + height/2 }, element.rotation || 0, { x: centerX, y: centerY }).y
         ]}
         stroke="#eab308"
         strokeWidth={1}
@@ -137,6 +254,7 @@ export const SkewHandles: React.FC<SkewHandlesProps> = ({ element, onUpdate, get
         stroke="#eab308"
         strokeWidth={2}
         draggable
+        zIndex={1000} // Higher z-index for better visibility
         onDragMove={(e) => handleSkewDrag('horizontal', e)}
         onMouseEnter={(e) => {
           e.target.getStage()!.container().style.cursor = 'ew-resize';
@@ -155,6 +273,7 @@ export const SkewHandles: React.FC<SkewHandlesProps> = ({ element, onUpdate, get
         stroke="#eab308"
         strokeWidth={2}
         draggable
+        zIndex={1000} // Higher z-index for better visibility
         onDragMove={(e) => handleSkewDrag('horizontal', e)}
         onMouseEnter={(e) => {
           e.target.getStage()!.container().style.cursor = 'ew-resize';
@@ -173,6 +292,7 @@ export const SkewHandles: React.FC<SkewHandlesProps> = ({ element, onUpdate, get
         stroke="#eab308"
         strokeWidth={2}
         draggable
+        zIndex={1000} // Higher z-index for better visibility
         onDragMove={(e) => handleSkewDrag('vertical', e)}
         onMouseEnter={(e) => {
           e.target.getStage()!.container().style.cursor = 'ns-resize';
@@ -191,6 +311,7 @@ export const SkewHandles: React.FC<SkewHandlesProps> = ({ element, onUpdate, get
         stroke="#eab308"
         strokeWidth={2}
         draggable
+        zIndex={1000} // Higher z-index for better visibility
         onDragMove={(e) => handleSkewDrag('vertical', e)}
         onMouseEnter={(e) => {
           e.target.getStage()!.container().style.cursor = 'ns-resize';
