@@ -95,13 +95,9 @@ export const PathElement: React.FC<PathElementProps> = React.memo(({
 
   const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
     const pos = e.target.position();
-    const pathCenterOffset = getPathCenterOffset();
-    // Use requestAnimationFrame to batch the update
+    // Use requestAnimationFrame to batch the update - direct coordinates
     requestAnimationFrame(() => {
-      onUpdate({ 
-        x: pos.x - pathCenterOffset.x, 
-        y: pos.y - pathCenterOffset.y 
-      });
+      onUpdate({ x: pos.x, y: pos.y });
     });
   };
 
@@ -160,52 +156,12 @@ export const PathElement: React.FC<PathElementProps> = React.memo(({
     }
   };
 
-  // Calculate path bounding box for center offset
-  const getPathCenterOffset = () => {
-    if (!element.path || !element.path.points.length) {
-      return { x: 0, y: 0 };
-    }
-    
-    let minX = Infinity, maxX = -Infinity;
-    let minY = Infinity, maxY = -Infinity;
-    
-    element.path.points.forEach(point => {
-      minX = Math.min(minX, point.x);
-      maxX = Math.max(maxX, point.x);
-      minY = Math.min(minY, point.y);
-      maxY = Math.max(maxY, point.y);
-      
-      // Include control points in bounding box
-      if (point.controlPoint1) {
-        minX = Math.min(minX, point.controlPoint1.x);
-        maxX = Math.max(maxX, point.controlPoint1.x);
-        minY = Math.min(minY, point.controlPoint1.y);
-        maxY = Math.max(maxY, point.controlPoint1.y);
-      }
-      if (point.controlPoint2) {
-        minX = Math.min(minX, point.controlPoint2.x);
-        maxX = Math.max(maxX, point.controlPoint2.x);
-        minY = Math.min(minY, point.controlPoint2.y);
-        maxY = Math.max(maxY, point.controlPoint2.y);
-      }
-    });
-    
-    return {
-      x: (maxX + minX) / 2,
-      y: (maxY + minY) / 2
-    };
-  };
-
-  const pathCenterOffset = getPathCenterOffset();
-
   const renderPathContent = () => (
     <Group
       ref={pathRef}
       id={`shape-${element.id}`}
-      x={element.x + pathCenterOffset.x}
-      y={element.y + pathCenterOffset.y}
-      offsetX={pathCenterOffset.x}
-      offsetY={pathCenterOffset.y}
+      x={element.x}
+      y={element.y}
       rotation={element.rotation || 0}
       skewX={element.skewX || 0}
       skewY={element.skewY || 0}
@@ -394,9 +350,11 @@ export const PathElement: React.FC<PathElementProps> = React.memo(({
           element={element}
           onUpdate={onUpdate}
           getBounds={() => {
-            const pathCenterOffset = getPathCenterOffset();
-            // Estimate path bounds (simplified)
+            // Calculate path bounds directly without center offset
             let width = 100, height = 100;
+            let centerX = element.x + 50;
+            let centerY = element.y + 50;
+            
             if (element.path && element.path.points.length > 0) {
               let minX = Infinity, maxX = -Infinity;
               let minY = Infinity, maxY = -Infinity;
@@ -410,13 +368,15 @@ export const PathElement: React.FC<PathElementProps> = React.memo(({
               
               width = Math.max(50, maxX - minX);
               height = Math.max(50, maxY - minY);
+              centerX = element.x + (maxX + minX) / 2;
+              centerY = element.y + (maxY + minY) / 2;
             }
             
             return {
               width,
               height,
-              centerX: element.x + pathCenterOffset.x,
-              centerY: element.y + pathCenterOffset.y
+              centerX,
+              centerY
             };
           }}
         />

@@ -215,8 +215,7 @@ export const calculateElementTransform = (
   element: any,
   transform: { scaleX: number; scaleY: number; rotation: number },
   center: { x: number; y: number }
-) => {
-  // Handle drawing elements differently - they use points array instead of x,y,width,height
+) => {  // Handle drawing elements - they use points array with direct coordinates
   if (element.type === 'drawing' && element.points) {
     // Calculate bounding box of the drawing
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -229,12 +228,17 @@ export const calculateElementTransform = (
       maxY = Math.max(maxY, y);
     }
     
+    // Drawing center is calculated from its points
     const drawingCenterX = (minX + maxX) / 2;
     const drawingCenterY = (minY + maxY) / 2;
     
+    // Element's actual center position in world coordinates
+    const elementCenterX = element.x + drawingCenterX;
+    const elementCenterY = element.y + drawingCenterY;
+
     // Apply transformation relative to the group center
-    const relativeX = drawingCenterX - center.x;
-    const relativeY = drawingCenterY - center.y;
+    const relativeX = elementCenterX - center.x;
+    const relativeY = elementCenterY - center.y;
 
     // Apply scaling first
     let newRelativeX = relativeX * transform.scaleX;
@@ -251,12 +255,8 @@ export const calculateElementTransform = (
       newRelativeY = rotatedY;
     }
 
-    const newDrawingCenterX = center.x + newRelativeX;
-    const newDrawingCenterY = center.y + newRelativeY;
-    
-    // Calculate the offset to apply to each point
-    const offsetX = newDrawingCenterX - drawingCenterX;
-    const offsetY = newDrawingCenterY - drawingCenterY;
+    const newElementCenterX = center.x + newRelativeX;
+    const newElementCenterY = center.y + newRelativeY;
     
     // Transform each point
     const newPoints = [];
@@ -279,14 +279,40 @@ export const calculateElementTransform = (
         y = drawingCenterY + (relX * sin + relY * cos);
       }
       
-      // Apply final offset
-      newPoints.push(x + offsetX, y + offsetY);
+      newPoints.push(x, y);
     }
+    
+    // Calculate new drawing center after transformation
+    let newMinX = Infinity, newMinY = Infinity, newMaxX = -Infinity, newMaxY = -Infinity;
+    for (let i = 0; i < newPoints.length; i += 2) {
+      const x = newPoints[i];
+      const y = newPoints[i + 1];
+      newMinX = Math.min(newMinX, x);
+      newMinY = Math.min(newMinY, y);
+      newMaxX = Math.max(newMaxX, x);
+      newMaxY = Math.max(newMaxY, y);
+    }
+    
+    const newDrawingCenterX = (newMinX + newMaxX) / 2;
+    const newDrawingCenterY = (newMinY + newMaxY) / 2;
+    
+    // Update element position to maintain the desired center position
+    const newElementX = newElementCenterX - newDrawingCenterX;
+    const newElementY = newElementCenterY - newDrawingCenterY;
     
     return {
       id: element.id,
       updates: {
+        x: newElementX,
+        y: newElementY,
         points: newPoints,
+        rotation: (() => {
+          let rot = (element.rotation || 0) + transform.rotation;
+          rot = rot % 360;
+          if (rot > 180) rot -= 360;
+          if (rot < -180) rot += 360;
+          return rot;
+        })(),
         strokeWidth: Math.max(0.5, (element.strokeWidth || 2) * Math.max(transform.scaleX, transform.scaleY)),
       },
     };

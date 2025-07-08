@@ -65,16 +65,9 @@ export const TextElement: React.FC<TextElementProps> = React.memo(({
     const node = e.target as Konva.Text;
     const pos = node.position();
     
-    // Account for text center offset
-    const textCenterOffsetX = (element.width || 200) / 2;
-    const textCenterOffsetY = (element.fontSize || 16) / 2;
-    
-    // Use requestAnimationFrame to batch the update
+    // Use requestAnimationFrame to batch the update - direct coordinates
     requestAnimationFrame(() => {
-      onUpdate(element.id, { 
-        x: pos.x - textCenterOffsetX, 
-        y: pos.y - textCenterOffsetY 
-      });
+      onUpdate(element.id, { x: pos.x, y: pos.y });
     });
   };
 
@@ -296,10 +289,8 @@ export const TextElement: React.FC<TextElementProps> = React.memo(({
       <Text
         ref={textRef}
         id={`shape-${element.id}`}
-        x={element.x + (element.width || 200) / 2}
-        y={element.y + (element.fontSize || 16) / 2}
-        offsetX={(element.width || 200) / 2}
-        offsetY={(element.fontSize || 16) / 2}
+        x={element.x}
+        y={element.y}
         text={element.text || 'Double-click to edit'}
         fontSize={element.fontSize || 16}
         fontFamily={element.fontFamily || 'Arial, sans-serif'}

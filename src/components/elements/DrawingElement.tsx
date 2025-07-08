@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Line, Group, Transformer } from 'react-konva';
+import { Line } from 'react-konva';
 import { SVGElement } from '@/types/svg';
 import Konva from 'konva';
 import { SkewHandles } from '../common/SkewHandles';
@@ -25,10 +25,10 @@ export const DrawingElement: React.FC<DrawingElementProps> = React.memo(({
     return null;
   }
 
-  // Calculate center offset for drawing points
-  const getDrawingCenterOffset = () => {
+  // Calculate bounding box for skew handles
+  const getBounds = () => {
     if (!element.points || element.points.length === 0) {
-      return { x: 0, y: 0 };
+      return { width: 100, height: 100, centerX: element.x + 50, centerY: element.y + 50 };
     }
     
     let minX = Infinity, maxX = -Infinity;
@@ -43,51 +43,25 @@ export const DrawingElement: React.FC<DrawingElementProps> = React.memo(({
       maxY = Math.max(maxY, y);
     }
     
-    return {
-      x: (maxX + minX) / 2,
-      y: (maxY + minY) / 2
-    };
+    const width = Math.max(50, maxX - minX);
+    const height = Math.max(50, maxY - minY);
+    // For direct coordinates, points are absolute, so center is just their center
+    const centerX = element.x + (maxX + minX) / 2;
+    const centerY = element.y + (maxY + minY) / 2;
+    
+    return { width, height, centerX, centerY };
   };
 
-  const centerOffset = getDrawingCenterOffset();
-
-  // Adjust points to be relative to center offset
-  const adjustedPoints = element.points.map((coord, index) => {
-    if (index % 2 === 0) {
-      // X coordinate
-      return coord - centerOffset.x;
-    } else {
-      // Y coordinate
-      return coord - centerOffset.y;
-    }
-  });
-
   return (
-    <Group
-      id={`shape-group-${element.id}`}
-      x={element.x + centerOffset.x}
-      y={element.y + centerOffset.y}
-      offsetX={centerOffset.x}
-      offsetY={centerOffset.y}
-      rotation={element.rotation || 0}
-      skewX={element.skewX || 0}
-      skewY={element.skewY || 0}
-      draggable={!isMultiSelected && isSelected}
-      onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
-        if (isMultiSelected) return;
-        
-        const node = e.target as Konva.Group;
-        const pos = node.position();
-        
-        onUpdate(element.id, { 
-          x: pos.x - centerOffset.x,
-          y: pos.y - centerOffset.y
-        });
-      }}
-    >
+    <>
       <Line
         id={`shape-${element.id}`}
-        points={adjustedPoints}
+        points={element.points}
+        x={element.x}
+        y={element.y}
+        rotation={element.rotation || 0}
+        skewX={element.skewX || 0}
+        skewY={element.skewY || 0}
         stroke={element.stroke === 'transparent' || element.stroke === 'none' ? undefined : element.stroke}
         strokeOpacity={element.strokeOpacity}
         strokeWidth={element.strokeWidth}
@@ -97,6 +71,23 @@ export const DrawingElement: React.FC<DrawingElementProps> = React.memo(({
         globalCompositeOperation="source-over"
         // Make it easier to select by increasing hit area
         hitStrokeWidth={Math.max(10, element.strokeWidth + 5)}
+        draggable={!isMultiSelected && isSelected}
+        onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
+          if (isMultiSelected) return;
+          
+          const node = e.target as Konva.Line;
+          const deltaX = node.x();
+          const deltaY = node.y();
+          
+          // Reset position since we'll update the element coordinates directly
+          node.position({ x: 0, y: 0 });
+          
+          // Update element position (direct coordinates)
+          onUpdate(element.id, { 
+            x: element.x + deltaX,
+            y: element.y + deltaY
+          });
+        }}
         onClick={(e) => {
           e.cancelBubble = true;
           onSelect(element.id);
@@ -119,37 +110,10 @@ export const DrawingElement: React.FC<DrawingElementProps> = React.memo(({
         <SkewHandles
           element={element}
           onUpdate={(updates) => onUpdate(element.id, updates)}
-          getBounds={() => {
-            const centerOffset = getDrawingCenterOffset();
-            // Calculate bounding box of drawing points
-            let width = 100, height = 100;
-            if (element.points && element.points.length > 0) {
-              let minX = Infinity, maxX = -Infinity;
-              let minY = Infinity, maxY = -Infinity;
-              
-              for (let i = 0; i < element.points.length; i += 2) {
-                const x = element.points[i];
-                const y = element.points[i + 1];
-                minX = Math.min(minX, x);
-                maxX = Math.max(maxX, x);
-                minY = Math.min(minY, y);
-                maxY = Math.max(maxY, y);
-              }
-              
-              width = Math.max(50, maxX - minX);
-              height = Math.max(50, maxY - minY);
-            }
-            
-            return {
-              width,
-              height,
-              centerX: element.x + centerOffset.x,
-              centerY: element.y + centerOffset.y
-            };
-          }}
+          getBounds={getBounds}
         />
       )}
-    </Group>
+    </>
   );
 });
 

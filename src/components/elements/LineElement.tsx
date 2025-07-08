@@ -25,47 +25,19 @@ export const LineElement: React.FC<LineElementProps> = React.memo(({
     return null;
   }
 
-  // Calculate relative points (relative to the group's position)
+  // Calculate relative points (relative to the line's position)
   const relativePoints = [0, 0, element.x2 - element.x, element.y2 - element.y];
-  
-  // Calculate center offset for skew transform
-  const centerOffsetX = (element.x2 - element.x) / 2;
-  const centerOffsetY = (element.y2 - element.y) / 2;
 
   return (
-    <Group
-      id={`shape-group-${element.id}`}
-      x={element.x + centerOffsetX}
-      y={element.y + centerOffsetY}
-      offsetX={centerOffsetX}
-      offsetY={centerOffsetY}
-      rotation={element.rotation || 0}
-      skewX={element.skewX || 0}
-      skewY={element.skewY || 0}
-      draggable={!isMultiSelected && isSelected}
-      onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
-        if (isMultiSelected) return;
-        
-        const node = e.target as Konva.Group;
-        const pos = node.position();
-        
-        // Calculate new position accounting for center offset
-        const newX = pos.x - centerOffsetX;
-        const newY = pos.y - centerOffsetY;
-        const deltaX = newX - element.x;
-        const deltaY = newY - element.y;
-        
-        onUpdate(element.id, { 
-          x: newX,
-          y: newY,
-          x2: (element.x2 ?? 0) + deltaX,
-          y2: (element.y2 ?? 0) + deltaY
-        });
-      }}
-    >
+    <>
       <Line
         id={`shape-${element.id}`}
         points={relativePoints}
+        x={element.x}
+        y={element.y}
+        rotation={element.rotation || 0}
+        skewX={element.skewX || 0}
+        skewY={element.skewY || 0}
         stroke={element.stroke === 'transparent' || element.stroke === 'none' ? undefined : element.stroke}
         strokeOpacity={element.strokeOpacity}
         strokeWidth={element.strokeWidth}
@@ -73,6 +45,25 @@ export const LineElement: React.FC<LineElementProps> = React.memo(({
         globalCompositeOperation="source-over"
         // Make it easier to select by increasing hit area
         hitStrokeWidth={Math.max(10, element.strokeWidth + 5)}
+        draggable={!isMultiSelected && isSelected}
+        onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
+          if (isMultiSelected) return;
+          
+          const node = e.target as Konva.Line;
+          const deltaX = node.x();
+          const deltaY = node.y();
+          
+          // Reset position since we'll update the coordinates directly
+          node.position({ x: 0, y: 0 });
+          
+          // Update start and end points
+          onUpdate(element.id, { 
+            x: element.x + deltaX,
+            y: element.y + deltaY,
+            x2: (element.x2 ?? 0) + deltaX,
+            y2: (element.y2 ?? 0) + deltaY
+          });
+        }}
         onClick={(e) => {
           e.cancelBubble = true;
           onSelect(element.id);
@@ -109,7 +100,7 @@ export const LineElement: React.FC<LineElementProps> = React.memo(({
           }}
         />
       )}
-    </Group>
+    </>
   );
 });
 

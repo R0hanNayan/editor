@@ -59,14 +59,9 @@ export const ShapeElement: React.FC<ShapeElementProps> = React.memo(({
 
   const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
     const pos = e.target.position();
-    // Get center offset to adjust position
-    const centerOffset = getCenterOffset();
-    // Use requestAnimationFrame to batch the update
+    // Use requestAnimationFrame to batch the update - direct coordinates
     requestAnimationFrame(() => {
-      onUpdate({ 
-        x: pos.x - centerOffset.x, 
-        y: pos.y - centerOffset.y 
-      });
+      onUpdate({ x: pos.x, y: pos.y });
     });
   };
 
@@ -177,17 +172,13 @@ export const ShapeElement: React.FC<ShapeElementProps> = React.memo(({
     return null;
   };
 
-  const centerOffset = getCenterOffset();
-
   return (
     <React.Fragment>
       <Group
         ref={shapeRef}
         id={`shape-${element.id}`}
-        x={element.x + centerOffset.x}
-        y={element.y + centerOffset.y}
-        offsetX={centerOffset.x}
-        offsetY={centerOffset.y}
+        x={element.x}
+        y={element.y}
         rotation={element.rotation || 0}
         skewX={element.skewX || 0}
         skewY={element.skewY || 0}

@@ -122,10 +122,10 @@ export const MultiSelectionGroup: React.FC<MultiSelectionGroupProps> = React.mem
     // Reset group position immediately for visual feedback
     e.target.position({ x: 0, y: 0 });
 
-    // Create position updates - handle different element types appropriately
+    // Create position updates - handle all element types consistently
     const updates = selectedElements.map(element => {
       if (element.type === 'drawing' && element.points) {
-        // For drawing elements, translate all points
+        // For drawing elements, translate all points directly (consistent with simplified DrawingElement)
         const newPoints = element.points.map((point, index) => {
           if (index % 2 === 0) {
             return point + deltaX; // x coordinate
